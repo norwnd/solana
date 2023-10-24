@@ -110,6 +110,7 @@ impl Signer for Keypair {
     }
 
     fn try_sign_message(&self, message: &[u8]) -> Result<Signature, SignerError> {
+        println!("try_sign_message: message = {:?}", message);
         Ok(self.sign_message(message))
     }
 

@@ -2,6 +2,7 @@
 
 #![cfg(feature = "full")]
 
+use std::fmt::Debug;
 use {
     crate::{
         derivation_path::DerivationPath,
@@ -14,7 +15,6 @@ use {
         error,
         fs::{self, File, OpenOptions},
         io::{Read, Write},
-        ops::Deref,
         path::Path,
     },
     thiserror::Error,
@@ -66,7 +66,7 @@ pub enum SignerError {
 /// The `Signer` trait declares operations that all digital signature providers
 /// must support. It is the primary interface by which signers are specified in
 /// `Transaction` signing interfaces
-pub trait Signer {
+pub trait Signer: Debug {
     /// Infallibly gets the implementor's public key. Returns the all-zeros
     /// `Pubkey` if the implementor has none.
     fn pubkey(&self) -> Pubkey {
@@ -94,29 +94,6 @@ where
     }
 }
 
-impl<Container: Deref<Target = impl Signer>> Signer for Container {
-    #[inline]
-    fn pubkey(&self) -> Pubkey {
-        self.deref().pubkey()
-    }
-
-    fn try_pubkey(&self) -> Result<Pubkey, SignerError> {
-        self.deref().try_pubkey()
-    }
-
-    fn sign_message(&self, message: &[u8]) -> Signature {
-        self.deref().sign_message(message)
-    }
-
-    fn try_sign_message(&self, message: &[u8]) -> Result<Signature, SignerError> {
-        self.deref().try_sign_message(message)
-    }
-
-    fn is_interactive(&self) -> bool {
-        self.deref().is_interactive()
-    }
-}
-
 impl PartialEq for dyn Signer {
     fn eq(&self, other: &dyn Signer) -> bool {
         self.pubkey() == other.pubkey()
@@ -124,12 +101,6 @@ impl PartialEq for dyn Signer {
 }
 
 impl Eq for dyn Signer {}
-
-impl std::fmt::Debug for dyn Signer {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(fmt, "Signer: {:?}", self.pubkey())
-    }
-}
 
 /// Removes duplicate signers while preserving order. O(n²)
 pub fn unique_signers(signers: Vec<&dyn Signer>) -> Vec<&dyn Signer> {

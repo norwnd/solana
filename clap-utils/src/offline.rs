@@ -44,7 +44,7 @@ pub fn sign_only_arg<'a, 'b>() -> Arg<'a, 'b> {
         .help(SIGN_ONLY_ARG.help)
 }
 
-fn signer_arg<'a, 'b>() -> Arg<'a, 'b> {
+pub fn signer_arg<'a, 'b>() -> Arg<'a, 'b> {
     Arg::with_name(SIGNER_ARG.name)
         .long(SIGNER_ARG.long)
         .takes_value(true)

@@ -40,6 +40,11 @@ impl Signer for Presigner {
     }
 
     fn try_sign_message(&self, message: &[u8]) -> Result<Signature, SignerError> {
+        println!(
+            "try_sign_message: pub_key = {:?} signature = {:?}",
+            self.pubkey, self.signature
+        );
+        println!("try_sign_message: message = {:?}", message);
         if self.signature.verify(self.pubkey.as_ref(), message) {
             Ok(self.signature)
         } else {
