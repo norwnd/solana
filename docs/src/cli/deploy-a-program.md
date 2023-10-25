@@ -13,8 +13,8 @@ To deploy a program, use the Solana tools to interact with the on-chain loader
 to:
 
 - Initialize a program account
-- Upload the program's shared object to the program account's data buffer
-- Verify the uploaded program
+- Upload the program's shared object (the program binary .so) to the program account's data buffer
+- (optional) Verify the uploaded program
 - Finalize the program by marking the program account executable.
 
 Once deployed, anyone can execute the program by sending transactions that
@@ -25,7 +25,7 @@ reference it to the cluster.
 ### Deploy a program
 
 To deploy a program, you will need the location of the program's shared object
-(the program binary .so)
+(the program binary .so):
 
 ```bash
 solana program deploy <PROGRAM_FILEPATH>
@@ -48,9 +48,9 @@ If the program id is not specified on the command line the tools will first look
 for a keypair file matching the `<PROGRAM_FILEPATH>`, or internally generate a
 new keypair.
 
-A matching program keypair file is in the same directory as the program's shared
-object, and named <PROGRAM_NAME>-keypair.json. Matching program keypairs are
-generated automatically by the program build tools:
+You can typically find a matching program keypair file is in the same directory 
+as the program's shared object, and named <PROGRAM_NAME>-keypair.json. Matching 
+program keypairs are generated automatically by the program build tools:
 
 ```bash
 ./path-to-program/program.so
@@ -89,10 +89,10 @@ Data Length: 5216 (0x1460) bytes
 ### Redeploy a program
 
 A program can be redeployed to the same address to facilitate rapid development,
-bug fixes, or upgrades. Matching keypair files are generated once so that
-redeployments will be to the same program address.
+bug fixes, or upgrades.
 
-The command looks the same as the deployment command:
+The command looks the same as the deployment command (same keypair file that resides from file directory corresponding
+to <PROGRAM_FILEPATH>, this keypair file will be generated once and then reused):
 
 ```bash
 solana program deploy <PROGRAM_FILEPATH>
@@ -111,8 +111,8 @@ solana program deploy --max-len 200000 <PROGRAM_FILEPATH>
 
 Note that program accounts are required to be
 [rent-exempt](developing/programming-model/accounts.md#rent-exemption), and the
-`max-len` is fixed after initial deployment, so any SOL in the program accounts
-is locked up permanently.
+`max-len` **cannot be changed** after initial deployment, yet any SOL in the program accounts
+is locked up permanently and cannot be reclaimed.
 
 ### Resuming a failed deploy
 
@@ -157,7 +157,7 @@ solana program deploy --buffer <KEYPAIR_PATH> <PROGRAM_FILEPATH>
 Both program and buffer accounts can be closed and their lamport balances
 transferred to a recipient's account.
 
-If deployment fails there will be a left over buffer account that holds
+If deployment fails there will be a left-over buffer account that holds
 lamports. The buffer account can either be used to [resume a
 deploy](#resuming-a-failed-deploy) or closed.
 
@@ -256,7 +256,7 @@ solana program dump <ACCOUNT_ADDRESS> <OUTPUT_FILEPATH>
 ```
 
 The dumped file will be in the same as what was deployed, so in the case of a
-shared object, the dumped file will be a fully functional shared object. Note
+shared object (the program binary .so), the dumped file will be a fully functional shared object. Note
 that the `dump` command dumps the entire data space, which means the output file
 will have trailing zeros after the shared object's data up to `max_len`.
 Sometimes it is useful to dump and compare a program to ensure it matches a
@@ -275,13 +275,14 @@ $ sha256sum extended.so dump.so
 Instead of deploying directly to the program account, the program can be written
 to an intermediary buffer account. Intermediary accounts can be useful for things
 like multi-entity governed programs where the governing members fist verify the
-intermediary buffer contents and then vote to allow an upgrade using it.
+intermediary buffer contents and then vote to allow an upgrade using it, or for
+[deploying programs with offline signer authority](#deploying-program-with-offline-signer-authority).
 
 ```bash
 solana program write-buffer <PROGRAM_FILEPATH>
 ```
 
-Buffer accounts support authorities like program accounts:
+Buffer accounts support different authorities (including offline signer and program account signer):
 
 ```bash
 solana program set-buffer-authority <BUFFER_ADDRESS> --new-buffer-authority <NEW_BUFFER_AUTHORITY>
@@ -297,6 +298,59 @@ the program:
 solana program deploy --program-id <PROGRAM_ADDRESS> --buffer <BUFFER_ADDRESS>
 ```
 
-Note, the buffer's authority must match the program's upgrade authority.
+Note, the buffer's authority must match the program's upgrade authority. Also, upon successful deploy
+buffer accounts contents are copied into program accounts and are erased from blockchain.
 
 Buffers also support `show` and `dump` just like programs do.
+
+### Deploying program with offline signer authority
+
+Suggestion: the simplest way to do offline signing is to arrange your signers such that `--program-id`,
+`--buffer-authority` and `--upgrade-authority` correspond to offline signer (key-pair).
+
+The general process is as follows:
+1) (use online machine) create buffer
+2) (use online machine) upgrade buffer authority to offline signer
+3) (optional, use a separate online machine) verify the actual buffer on-chain contents
+4) (use offline machine) get a signature for your intent to create or upgrade program
+5) (use online machine) use this signature to build and broadcast create/upgrade transactions on-chain
+
+```bash
+# (1) (use online machine) create buffer
+solana program write-buffer <PROGRAM_FILEPATH>
+
+# (2) (use online machine) upgrade buffer authority to offline signer
+solana program set-buffer-authority <PUB_KEY> --new-buffer-authority <PUB_KEY>
+```
+
+- note, above we have to issue a separate `set-buffer-authority` command (using online machine) to change authority to
+  be that of offline signer because we don't have access to offline signer private key to sign up as buffer authority
+  when running `solana program write-buffer` command using online machine (offline signer private key is stored on
+  offline machine)
+
+(3) This is where you'd want to verify the program (or program buffer) uploaded to buffer indeed matches source code,
+the most secure way to do it would be to compile program source code on a different online machine (not the same
+online machine that deploys your program, because it could be compromised) and compare resulting `.so` file with
+program data residing on-chain. See how you can [dump on-chain program into a file](deploy-a-program.md#dumping-a-program-to-a-file)
+to verify it.
+
+After program buffer has been verified and indeed contains the compiled result of intended source code - we are ready
+to sign program deploy (to create brand-new program or upgrade existing one), fill in all required parameters below
+(<WHATEVER_PARAM> values).
+
+```bash
+# (4) (use offline machine) get a signature for your intent to CREATE program
+solana program deploy --sign-only --program-id <PUB_KEY> --upgrade-authority <SIGNER> --buffer <PUB_KEY> --blockhash <VALUE> --max-len <VALUE> --min-rent-balance <VALUE>
+# or (4) (use offline machine) get a signature for your intent to UPGRADE program
+solana program deploy --sign-only --upgrade --program-id <PUB_KEY> --upgrade-authority <SIGNER> --buffer <PUB_KEY> --blockhash <VALUE> --max-len <VALUE> --min-rent-balance <VALUE>
+
+# (5) (use online machine) use this signature to build and broadcast create transactions on-chain
+solana program deploy --program-id <PUB_KEY> --upgrade-authority <PUB_KEY> --buffer <PUB_KEY> --blockhash <VALUE> --max-len <VALUE> --signer <SIGNATURE>
+# or (5) (use online machine) use this signature to build and broadcast upgrade transactions on-chain
+solana program deploy --program-id <PUB_KEY> --upgrade-authority <PUB_KEY> --buffer <PUB_KEY> --blockhash <VALUE> --max-len <VALUE> --signer <SIGNATURE>
+```
+Note, you should pre-fill every value except for `blockhash` ahead of time (typically, the output of the previous
+command(s) will contain some values useful in subsequent commands, e.g. `buffer`, `--max-len`, `--min-rent-balance`),
+and once you are ready to act - you'll need to look up fresh `blockhash` and paste it in quickly + do your signing,
+you have ~60 seconds before `blockhash` expires. If you didn't make it in time - just get another fresh hash and repeat
+until you succeed, or consider using [durable transaction nonces](../offline-signing/durable-nonce.md).

@@ -66,6 +66,7 @@ impl SignOnly {
 }
 pub type CliSigners = Vec<Box<dyn Signer>>;
 pub type SignerIndex = usize;
+#[derive(Debug)]
 pub struct CliSignerInfo {
     pub signers: CliSigners,
 }
