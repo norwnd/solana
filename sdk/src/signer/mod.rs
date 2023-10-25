@@ -2,7 +2,6 @@
 
 #![cfg(feature = "full")]
 
-use std::fmt::Debug;
 use {
     crate::{
         derivation_path::DerivationPath,
@@ -13,8 +12,10 @@ use {
     itertools::Itertools,
     std::{
         error,
+        fmt::Debug,
         fs::{self, File, OpenOptions},
         io::{Read, Write},
+        ops::Deref,
         path::Path,
     },
     thiserror::Error,
@@ -91,6 +92,29 @@ where
 {
     fn from(signer: T) -> Self {
         Box::new(signer)
+    }
+}
+
+impl<Container: Deref<Target = impl Signer> + Debug> Signer for Container {
+    #[inline]
+    fn pubkey(&self) -> Pubkey {
+        self.deref().pubkey()
+    }
+
+    fn try_pubkey(&self) -> Result<Pubkey, SignerError> {
+        self.deref().try_pubkey()
+    }
+
+    fn sign_message(&self, message: &[u8]) -> Signature {
+        self.deref().sign_message(message)
+    }
+
+    fn try_sign_message(&self, message: &[u8]) -> Result<Signature, SignerError> {
+        self.deref().try_sign_message(message)
+    }
+
+    fn is_interactive(&self) -> bool {
+        self.deref().is_interactive()
     }
 }
 

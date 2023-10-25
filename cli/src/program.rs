@@ -1,7 +1,3 @@
-use solana_clap_utils::fee_payer::{fee_payer_arg, FEE_PAYER_ARG};
-use solana_clap_utils::offline::{OfflineArgs, DUMP_TRANSACTION_MESSAGE, SIGN_ONLY_ARG};
-use solana_rpc_client_nonce_utils::blockhash_query;
-use solana_rpc_client_nonce_utils::blockhash_query::BlockhashQuery;
 use {
     crate::{
         checks::*,
@@ -16,7 +12,13 @@ use {
     solana_account_decoder::{UiAccountEncoding, UiDataSliceConfig},
     solana_bpf_loader_program::syscalls::create_program_runtime_environment_v1,
     solana_clap_utils::{
-        self, hidden_unless_forced, input_parsers::*, input_validators::*, keypair::*,
+        self,
+        fee_payer::{fee_payer_arg, FEE_PAYER_ARG},
+        hidden_unless_forced,
+        input_parsers::*,
+        input_validators::*,
+        keypair::*,
+        offline::{OfflineArgs, DUMP_TRANSACTION_MESSAGE, SIGN_ONLY_ARG},
     },
     solana_cli_output::{
         return_signers_with_config, CliProgram, CliProgramAccountType, CliProgramAuthority,
@@ -40,6 +42,7 @@ use {
         config::{RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig},
         filter::{Memcmp, RpcFilterType},
     },
+    solana_rpc_client_nonce_utils::{blockhash_query, blockhash_query::BlockhashQuery},
     solana_sdk::{
         account::Account,
         account_utils::StateMut,
@@ -2452,7 +2455,6 @@ fn report_ephemeral_mnemonic(words: usize, mnemonic: bip39::Mnemonic) {
 
 #[cfg(test)]
 mod tests {
-    use solana_rpc_client_nonce_utils::blockhash_query;
     use {
         super::*,
         crate::{
@@ -2461,7 +2463,8 @@ mod tests {
         },
         serde_json::Value,
         solana_cli_output::OutputFormat,
-        solana_sdk::signature::write_keypair_file,
+        solana_rpc_client_nonce_utils::blockhash_query,
+        solana_sdk::signature::{write_keypair_file, NullSigner},
     };
 
     fn make_tmp_path(name: &str) -> String {
@@ -2600,7 +2603,7 @@ mod tests {
                     program_location: Some("/Users/test/program.so".to_string()),
                     fee_payer_signer_index: 0,
                     buffer_signer_index: None,
-                    program_signer_index: None,
+                    program_signer_index: Some(1),
                     upgrade_authority_signer_index: 0,
                     is_final: false,
                     max_len: None,
@@ -2612,7 +2615,10 @@ mod tests {
                     blockhash_query: BlockhashQuery::All(blockhash_query::Source::Cluster),
                     min_rent_balance: None,
                 }),
-                signers: vec![read_keypair_file(&keypair_file).unwrap().into()],
+                signers: vec![
+                    read_keypair_file(&keypair_file).unwrap().into(),
+                    Box::new(NullSigner::new(&program_pubkey))
+                ],
             }
         );
 

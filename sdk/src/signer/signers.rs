@@ -147,6 +147,7 @@ impl<T: Signer> Signers for Vec<&T> {
 mod tests {
     use super::*;
 
+    #[derive(Debug)]
     struct Foo;
     impl Signer for Foo {
         fn try_pubkey(&self) -> Result<Pubkey, SignerError> {
@@ -160,6 +161,7 @@ mod tests {
         }
     }
 
+    #[derive(Debug)]
     struct Bar;
     impl Signer for Bar {
         fn try_pubkey(&self) -> Result<Pubkey, SignerError> {

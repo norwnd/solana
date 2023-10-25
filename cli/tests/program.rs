@@ -15,7 +15,7 @@ use {
         bpf_loader_upgradeable::{self, UpgradeableLoaderState},
         commitment_config::CommitmentConfig,
         pubkey::Pubkey,
-        signature::{Keypair, Signer},
+        signature::{Keypair, NullSigner, Signer},
     },
     solana_streamer::socket::SocketAddrSpace,
     solana_test_validator::TestValidator,
@@ -65,15 +65,19 @@ fn test_cli_program_deploy_non_upgradeable() {
 
     config.command = CliCommand::Program(ProgramCliCommand::Deploy {
         program_location: Some(noop_path.to_str().unwrap().to_string()),
+        fee_payer_signer_index: 0,
         program_signer_index: None,
-        program_pubkey: None,
         buffer_signer_index: None,
-        buffer_pubkey: None,
         allow_excessive_balance: false,
         upgrade_authority_signer_index: 0,
         is_final: true,
         max_len: None,
         skip_fee_check: false,
+        sign_only: false,
+        upgrade: None,
+        dump_transaction_message: false,
+        blockhash_query: Default::default(),
+        min_rent_balance: None,
     });
     config.output_format = OutputFormat::JsonCompact;
     let response = process_command(&config);
@@ -109,15 +113,19 @@ fn test_cli_program_deploy_non_upgradeable() {
     config.signers = vec![&keypair, &custom_address_keypair];
     config.command = CliCommand::Program(ProgramCliCommand::Deploy {
         program_location: Some(noop_path.to_str().unwrap().to_string()),
+        fee_payer_signer_index: 0,
         program_signer_index: Some(1),
-        program_pubkey: None,
         buffer_signer_index: None,
-        buffer_pubkey: None,
         allow_excessive_balance: false,
         upgrade_authority_signer_index: 0,
         is_final: true,
         max_len: None,
         skip_fee_check: false,
+        sign_only: false,
+        upgrade: None,
+        dump_transaction_message: false,
+        blockhash_query: Default::default(),
+        min_rent_balance: None,
     });
     process_command(&config).unwrap();
     let account1 = rpc_client
@@ -163,15 +171,19 @@ fn test_cli_program_deploy_non_upgradeable() {
     config.signers = vec![&keypair, &custom_address_keypair];
     config.command = CliCommand::Program(ProgramCliCommand::Deploy {
         program_location: Some(noop_path.to_str().unwrap().to_string()),
+        fee_payer_signer_index: 0,
         program_signer_index: Some(1),
-        program_pubkey: None,
         buffer_signer_index: None,
-        buffer_pubkey: None,
         allow_excessive_balance: false,
         upgrade_authority_signer_index: 0,
         is_final: true,
         max_len: None,
         skip_fee_check: false,
+        sign_only: false,
+        upgrade: None,
+        dump_transaction_message: false,
+        blockhash_query: Default::default(),
+        min_rent_balance: None,
     });
     let err = process_command(&config).unwrap_err();
     assert_eq!(
@@ -185,15 +197,19 @@ fn test_cli_program_deploy_non_upgradeable() {
     // Use forcing parameter to deploy to account with excess balance
     config.command = CliCommand::Program(ProgramCliCommand::Deploy {
         program_location: Some(noop_path.to_str().unwrap().to_string()),
+        fee_payer_signer_index: 0,
         program_signer_index: Some(1),
-        program_pubkey: None,
         buffer_signer_index: None,
-        buffer_pubkey: None,
         allow_excessive_balance: true,
         upgrade_authority_signer_index: 0,
         is_final: true,
         max_len: None,
         skip_fee_check: false,
+        sign_only: false,
+        upgrade: None,
+        dump_transaction_message: false,
+        blockhash_query: Default::default(),
+        min_rent_balance: None,
     });
     process_command(&config).unwrap_err();
 }
@@ -245,15 +261,19 @@ fn test_cli_program_deploy_no_authority() {
     config.signers = vec![&keypair, &upgrade_authority];
     config.command = CliCommand::Program(ProgramCliCommand::Deploy {
         program_location: Some(noop_path.to_str().unwrap().to_string()),
+        fee_payer_signer_index: 0,
         program_signer_index: None,
-        program_pubkey: None,
         buffer_signer_index: None,
-        buffer_pubkey: None,
         allow_excessive_balance: false,
         upgrade_authority_signer_index: 1,
         is_final: true,
         max_len: None,
         skip_fee_check: false,
+        sign_only: false,
+        upgrade: None,
+        dump_transaction_message: false,
+        blockhash_query: Default::default(),
+        min_rent_balance: None,
     });
     config.output_format = OutputFormat::JsonCompact;
     let response = process_command(&config);
@@ -268,18 +288,23 @@ fn test_cli_program_deploy_no_authority() {
     let program_id = Pubkey::from_str(program_id_str).unwrap();
 
     // Attempt to upgrade the program
-    config.signers = vec![&keypair, &upgrade_authority];
+    let program_signer = NullSigner::new(&program_id);
+    config.signers = vec![&keypair, &upgrade_authority, &program_signer];
     config.command = CliCommand::Program(ProgramCliCommand::Deploy {
         program_location: Some(noop_path.to_str().unwrap().to_string()),
-        program_signer_index: None,
-        program_pubkey: Some(program_id),
+        fee_payer_signer_index: 0,
+        program_signer_index: Some(2),
         buffer_signer_index: None,
-        buffer_pubkey: None,
         allow_excessive_balance: false,
         upgrade_authority_signer_index: 1,
         is_final: false,
         max_len: None,
         skip_fee_check: false,
+        sign_only: false,
+        upgrade: None,
+        dump_transaction_message: false,
+        blockhash_query: Default::default(),
+        min_rent_balance: None,
     });
     process_command(&config).unwrap_err();
 }
@@ -332,15 +357,19 @@ fn test_cli_program_deploy_with_authority() {
     config.signers = vec![&keypair, &upgrade_authority, &program_keypair];
     config.command = CliCommand::Program(ProgramCliCommand::Deploy {
         program_location: Some(noop_path.to_str().unwrap().to_string()),
+        fee_payer_signer_index: 0,
         program_signer_index: Some(2),
-        program_pubkey: Some(program_keypair.pubkey()),
         buffer_signer_index: None,
-        buffer_pubkey: None,
         allow_excessive_balance: false,
         upgrade_authority_signer_index: 1,
         is_final: false,
         max_len: Some(max_len),
         skip_fee_check: false,
+        sign_only: false,
+        upgrade: None,
+        dump_transaction_message: false,
+        blockhash_query: Default::default(),
+        min_rent_balance: None,
     });
     config.output_format = OutputFormat::JsonCompact;
     let response = process_command(&config);
@@ -380,15 +409,19 @@ fn test_cli_program_deploy_with_authority() {
     config.signers = vec![&keypair, &upgrade_authority];
     config.command = CliCommand::Program(ProgramCliCommand::Deploy {
         program_location: Some(noop_path.to_str().unwrap().to_string()),
+        fee_payer_signer_index: 0,
         program_signer_index: None,
-        program_pubkey: None,
         buffer_signer_index: None,
-        buffer_pubkey: None,
         allow_excessive_balance: false,
         upgrade_authority_signer_index: 1,
         is_final: false,
         max_len: Some(max_len),
         skip_fee_check: false,
+        sign_only: false,
+        upgrade: None,
+        dump_transaction_message: false,
+        blockhash_query: Default::default(),
+        min_rent_balance: None,
     });
     let response = process_command(&config);
     let json: Value = serde_json::from_str(&response.unwrap()).unwrap();
@@ -419,18 +452,23 @@ fn test_cli_program_deploy_with_authority() {
     );
 
     // Upgrade the program
-    config.signers = vec![&keypair, &upgrade_authority];
+    let program_signer = NullSigner::new(&program_pubkey);
+    config.signers = vec![&keypair, &upgrade_authority, &program_signer];
     config.command = CliCommand::Program(ProgramCliCommand::Deploy {
         program_location: Some(noop_path.to_str().unwrap().to_string()),
-        program_signer_index: None,
-        program_pubkey: Some(program_pubkey),
+        fee_payer_signer_index: 0,
+        program_signer_index: Some(2),
         buffer_signer_index: None,
-        buffer_pubkey: None,
         allow_excessive_balance: false,
         upgrade_authority_signer_index: 1,
         is_final: false,
         max_len: Some(max_len),
         skip_fee_check: false,
+        sign_only: false,
+        upgrade: None,
+        dump_transaction_message: false,
+        blockhash_query: Default::default(),
+        min_rent_balance: None,
     });
     process_command(&config).unwrap();
     let program_account = rpc_client.get_account(&program_pubkey).unwrap();
@@ -474,18 +512,23 @@ fn test_cli_program_deploy_with_authority() {
     );
 
     // Upgrade with new authority
-    config.signers = vec![&keypair, &new_upgrade_authority];
+    let program_signer = NullSigner::new(&program_pubkey);
+    config.signers = vec![&keypair, &new_upgrade_authority, &program_signer];
     config.command = CliCommand::Program(ProgramCliCommand::Deploy {
         program_location: Some(noop_path.to_str().unwrap().to_string()),
-        program_signer_index: None,
-        program_pubkey: Some(program_pubkey),
+        fee_payer_signer_index: 0,
+        program_signer_index: Some(2),
         buffer_signer_index: None,
-        buffer_pubkey: None,
         allow_excessive_balance: false,
         upgrade_authority_signer_index: 1,
         is_final: false,
         max_len: None,
         skip_fee_check: false,
+        sign_only: false,
+        upgrade: None,
+        dump_transaction_message: false,
+        blockhash_query: Default::default(),
+        min_rent_balance: None,
     });
     process_command(&config).unwrap();
     let program_account = rpc_client.get_account(&program_pubkey).unwrap();
@@ -549,18 +592,23 @@ fn test_cli_program_deploy_with_authority() {
     assert_eq!(new_upgrade_authority_str, "none");
 
     // Upgrade with no authority
-    config.signers = vec![&keypair, &new_upgrade_authority];
+    let program_signer = NullSigner::new(&program_pubkey);
+    config.signers = vec![&keypair, &new_upgrade_authority, &program_signer];
     config.command = CliCommand::Program(ProgramCliCommand::Deploy {
         program_location: Some(noop_path.to_str().unwrap().to_string()),
-        program_signer_index: None,
-        program_pubkey: Some(program_pubkey),
+        fee_payer_signer_index: 0,
+        program_signer_index: Some(2),
         buffer_signer_index: None,
-        buffer_pubkey: None,
         allow_excessive_balance: false,
         upgrade_authority_signer_index: 1,
         is_final: false,
         max_len: None,
         skip_fee_check: false,
+        sign_only: false,
+        upgrade: None,
+        dump_transaction_message: false,
+        blockhash_query: Default::default(),
+        min_rent_balance: None,
     });
     process_command(&config).unwrap_err();
 
@@ -568,15 +616,19 @@ fn test_cli_program_deploy_with_authority() {
     config.signers = vec![&keypair, &new_upgrade_authority];
     config.command = CliCommand::Program(ProgramCliCommand::Deploy {
         program_location: Some(noop_path.to_str().unwrap().to_string()),
+        fee_payer_signer_index: 0,
         program_signer_index: None,
-        program_pubkey: None,
         buffer_signer_index: None,
-        buffer_pubkey: None,
         allow_excessive_balance: false,
         upgrade_authority_signer_index: 1,
         is_final: true,
         max_len: None,
         skip_fee_check: false,
+        sign_only: false,
+        upgrade: None,
+        dump_transaction_message: false,
+        blockhash_query: Default::default(),
+        min_rent_balance: None,
     });
     let response = process_command(&config);
     let json: Value = serde_json::from_str(&response.unwrap()).unwrap();
@@ -671,15 +723,19 @@ fn test_cli_program_close_program() {
     config.signers = vec![&keypair, &upgrade_authority, &program_keypair];
     config.command = CliCommand::Program(ProgramCliCommand::Deploy {
         program_location: Some(noop_path.to_str().unwrap().to_string()),
+        fee_payer_signer_index: 0,
         program_signer_index: Some(2),
-        program_pubkey: Some(program_keypair.pubkey()),
         buffer_signer_index: None,
-        buffer_pubkey: None,
         allow_excessive_balance: false,
         upgrade_authority_signer_index: 1,
         is_final: false,
         max_len: Some(max_len),
         skip_fee_check: false,
+        sign_only: false,
+        upgrade: None,
+        dump_transaction_message: false,
+        blockhash_query: Default::default(),
+        min_rent_balance: None,
     });
     config.output_format = OutputFormat::JsonCompact;
     process_command(&config).unwrap();
@@ -780,6 +836,7 @@ fn test_cli_program_write_buffer() {
     config.signers = vec![&keypair];
     config.command = CliCommand::Program(ProgramCliCommand::WriteBuffer {
         program_location: noop_path.to_str().unwrap().to_string(),
+        fee_payer_signer_index: 0,
         buffer_signer_index: None,
         buffer_pubkey: None,
         buffer_authority_signer_index: 0,
@@ -815,6 +872,7 @@ fn test_cli_program_write_buffer() {
     config.signers = vec![&keypair, &buffer_keypair];
     config.command = CliCommand::Program(ProgramCliCommand::WriteBuffer {
         program_location: noop_path.to_str().unwrap().to_string(),
+        fee_payer_signer_index: 0,
         buffer_signer_index: Some(1),
         buffer_pubkey: Some(buffer_keypair.pubkey()),
         buffer_authority_signer_index: 0,
@@ -877,6 +935,7 @@ fn test_cli_program_write_buffer() {
     config.signers = vec![&keypair, &buffer_keypair, &authority_keypair];
     config.command = CliCommand::Program(ProgramCliCommand::WriteBuffer {
         program_location: noop_path.to_str().unwrap().to_string(),
+        fee_payer_signer_index: 0,
         buffer_signer_index: Some(1),
         buffer_pubkey: Some(buffer_keypair.pubkey()),
         buffer_authority_signer_index: 2,
@@ -915,6 +974,7 @@ fn test_cli_program_write_buffer() {
     config.signers = vec![&keypair, &buffer_keypair, &authority_keypair];
     config.command = CliCommand::Program(ProgramCliCommand::WriteBuffer {
         program_location: noop_path.to_str().unwrap().to_string(),
+        fee_payer_signer_index: 0,
         buffer_signer_index: None,
         buffer_pubkey: None,
         buffer_authority_signer_index: 2,
@@ -989,6 +1049,7 @@ fn test_cli_program_write_buffer() {
     config.signers = vec![&keypair];
     config.command = CliCommand::Program(ProgramCliCommand::WriteBuffer {
         program_location: noop_path.to_str().unwrap().to_string(),
+        fee_payer_signer_index: 0,
         buffer_signer_index: None,
         buffer_pubkey: None,
         buffer_authority_signer_index: 0,
@@ -1030,6 +1091,7 @@ fn test_cli_program_write_buffer() {
     config.signers = vec![&keypair, &buffer_keypair];
     config.command = CliCommand::Program(ProgramCliCommand::WriteBuffer {
         program_location: noop_path.to_str().unwrap().to_string(),
+        fee_payer_signer_index: 0,
         buffer_signer_index: Some(1),
         buffer_pubkey: Some(buffer_keypair.pubkey()),
         buffer_authority_signer_index: 0,
@@ -1040,15 +1102,19 @@ fn test_cli_program_write_buffer() {
     config.signers = vec![&keypair, &buffer_keypair];
     config.command = CliCommand::Program(ProgramCliCommand::Deploy {
         program_location: Some(noop_large_path.to_str().unwrap().to_string()),
+        fee_payer_signer_index: 0,
         program_signer_index: None,
-        program_pubkey: None,
         buffer_signer_index: Some(1),
-        buffer_pubkey: Some(buffer_keypair.pubkey()),
         allow_excessive_balance: false,
         upgrade_authority_signer_index: 1,
         is_final: true,
         max_len: None,
         skip_fee_check: false,
+        sign_only: false,
+        upgrade: None,
+        dump_transaction_message: false,
+        blockhash_query: Default::default(),
+        min_rent_balance: None,
     });
     config.output_format = OutputFormat::JsonCompact;
     let error = process_command(&config).unwrap_err();
@@ -1102,6 +1168,7 @@ fn test_cli_program_set_buffer_authority() {
     config.signers = vec![&keypair, &buffer_keypair];
     config.command = CliCommand::Program(ProgramCliCommand::WriteBuffer {
         program_location: noop_path.to_str().unwrap().to_string(),
+        fee_payer_signer_index: 0,
         buffer_signer_index: Some(1),
         buffer_pubkey: Some(buffer_keypair.pubkey()),
         buffer_authority_signer_index: 0,
@@ -1218,6 +1285,7 @@ fn test_cli_program_mismatch_buffer_authority() {
     config.signers = vec![&keypair, &buffer_keypair, &buffer_authority];
     config.command = CliCommand::Program(ProgramCliCommand::WriteBuffer {
         program_location: noop_path.to_str().unwrap().to_string(),
+        fee_payer_signer_index: 0,
         buffer_signer_index: Some(1),
         buffer_pubkey: Some(buffer_keypair.pubkey()),
         buffer_authority_signer_index: 2,
@@ -1233,35 +1301,45 @@ fn test_cli_program_mismatch_buffer_authority() {
     }
 
     // Attempt to deploy with mismatched authority
+    let buffer_signer = NullSigner::new(&buffer_keypair.pubkey());
     let upgrade_authority = Keypair::new();
-    config.signers = vec![&keypair, &upgrade_authority];
+    config.signers = vec![&keypair, &upgrade_authority, &buffer_signer];
     config.command = CliCommand::Program(ProgramCliCommand::Deploy {
         program_location: Some(noop_path.to_str().unwrap().to_string()),
+        fee_payer_signer_index: 0,
         program_signer_index: None,
-        program_pubkey: None,
-        buffer_signer_index: None,
-        buffer_pubkey: Some(buffer_keypair.pubkey()),
+        buffer_signer_index: Some(2),
         allow_excessive_balance: false,
         upgrade_authority_signer_index: 1,
         is_final: true,
         max_len: None,
         skip_fee_check: false,
+        sign_only: false,
+        upgrade: None,
+        dump_transaction_message: false,
+        blockhash_query: Default::default(),
+        min_rent_balance: None,
     });
     process_command(&config).unwrap_err();
 
     // Attempt to deploy matched authority
-    config.signers = vec![&keypair, &buffer_authority];
+    let buffer_signer = NullSigner::new(&buffer_keypair.pubkey());
+    config.signers = vec![&keypair, &buffer_authority, &buffer_signer];
     config.command = CliCommand::Program(ProgramCliCommand::Deploy {
         program_location: Some(noop_path.to_str().unwrap().to_string()),
+        fee_payer_signer_index: 0,
         program_signer_index: None,
-        program_pubkey: None,
-        buffer_signer_index: None,
-        buffer_pubkey: Some(buffer_keypair.pubkey()),
+        buffer_signer_index: Some(2),
         allow_excessive_balance: false,
         upgrade_authority_signer_index: 1,
         is_final: true,
         max_len: None,
         skip_fee_check: false,
+        sign_only: false,
+        upgrade: None,
+        dump_transaction_message: false,
+        blockhash_query: Default::default(),
+        min_rent_balance: None,
     });
     process_command(&config).unwrap();
 }
@@ -1314,6 +1392,7 @@ fn test_cli_program_show() {
     config.signers = vec![&keypair, &buffer_keypair, &authority_keypair];
     config.command = CliCommand::Program(ProgramCliCommand::WriteBuffer {
         program_location: noop_path.to_str().unwrap().to_string(),
+        fee_payer_signer_index: 0,
         buffer_signer_index: Some(1),
         buffer_pubkey: Some(buffer_keypair.pubkey()),
         buffer_authority_signer_index: 2,
@@ -1370,15 +1449,19 @@ fn test_cli_program_show() {
     config.signers = vec![&keypair, &authority_keypair, &program_keypair];
     config.command = CliCommand::Program(ProgramCliCommand::Deploy {
         program_location: Some(noop_path.to_str().unwrap().to_string()),
+        fee_payer_signer_index: 0,
         program_signer_index: Some(2),
-        program_pubkey: Some(program_keypair.pubkey()),
         buffer_signer_index: None,
-        buffer_pubkey: None,
         allow_excessive_balance: false,
         upgrade_authority_signer_index: 1,
         is_final: false,
         max_len: Some(max_len),
         skip_fee_check: false,
+        sign_only: false,
+        upgrade: None,
+        dump_transaction_message: false,
+        blockhash_query: Default::default(),
+        min_rent_balance: None,
     });
     config.output_format = OutputFormat::JsonCompact;
     let min_slot = rpc_client.get_slot().unwrap();
@@ -1501,6 +1584,7 @@ fn test_cli_program_dump() {
     config.signers = vec![&keypair, &buffer_keypair, &authority_keypair];
     config.command = CliCommand::Program(ProgramCliCommand::WriteBuffer {
         program_location: noop_path.to_str().unwrap().to_string(),
+        fee_payer_signer_index: 0,
         buffer_signer_index: Some(1),
         buffer_pubkey: Some(buffer_keypair.pubkey()),
         buffer_authority_signer_index: 2,

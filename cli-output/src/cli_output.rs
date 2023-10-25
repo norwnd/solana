@@ -3146,6 +3146,7 @@ mod tests {
 
     #[test]
     fn test_return_signers() {
+        #[derive(Debug)]
         struct BadSigner {
             pubkey: Pubkey,
         }
