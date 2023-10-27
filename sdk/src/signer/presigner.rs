@@ -1,5 +1,7 @@
 #![cfg(feature = "full")]
 
+use std::io::Read;
+use itertools::Itertools;
 use {
     crate::{
         pubkey::Pubkey,
@@ -40,6 +42,7 @@ impl Signer for Presigner {
     }
 
     fn try_sign_message(&self, message: &[u8]) -> Result<Signature, SignerError> {
+        println!("Presigner: {:?} --- {:?}", self.pubkey, message.bytes());
         if self.signature.verify(self.pubkey.as_ref(), message) {
             Ok(self.signature)
         } else {
@@ -48,6 +51,10 @@ impl Signer for Presigner {
     }
 
     fn is_interactive(&self) -> bool {
+        false
+    }
+
+    fn is_null_signer(&self) -> bool {
         false
     }
 }

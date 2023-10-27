@@ -15,6 +15,7 @@ pub trait Signers {
     fn sign_message(&self, message: &[u8]) -> Vec<Signature>;
     fn try_sign_message(&self, message: &[u8]) -> Result<Vec<Signature>, SignerError>;
     fn is_interactive(&self) -> bool;
+    fn is_null_signer(&self) -> bool;
 }
 
 macro_rules! default_keypairs_impl {
@@ -47,6 +48,10 @@ macro_rules! default_keypairs_impl {
 
         fn is_interactive(&self) -> bool {
             self.iter().any(|s| s.is_interactive())
+        }
+
+        fn is_null_signer(&self) -> bool {
+            self.iter().any(|s| s.is_null_signer())
         }
     };
 }
@@ -159,6 +164,9 @@ mod tests {
         fn is_interactive(&self) -> bool {
             false
         }
+        fn is_null_signer(&self) -> bool {
+            false
+        }
     }
 
     #[derive(Debug)]
@@ -171,6 +179,9 @@ mod tests {
             Ok(Signature::default())
         }
         fn is_interactive(&self) -> bool {
+            false
+        }
+        fn is_null_signer(&self) -> bool {
             false
         }
     }

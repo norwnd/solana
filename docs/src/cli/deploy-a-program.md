@@ -323,10 +323,10 @@ solana program write-buffer <PROGRAM_FILEPATH>
 solana program set-buffer-authority <PUB_KEY> --new-buffer-authority <PUB_KEY>
 ```
 
-- note, above we have to issue a separate `set-buffer-authority` command (using online machine) to change authority to
+- note, above we have to issue a separate `solana program set-buffer-authority` command (using online machine) to change authority to
   be that of offline signer because we don't have access to offline signer private key to sign up as buffer authority
   when running `solana program write-buffer` command using online machine (offline signer private key is stored on
-  offline machine)
+  offline machine), and `solana program set-buffer-authority` doesn't impose that requirement.
 
 (3) This is where you'd want to verify the program (or program buffer) uploaded to buffer indeed matches source code,
 the most secure way to do it would be to compile program source code on a different online machine (not the same

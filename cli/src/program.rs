@@ -1089,8 +1089,9 @@ fn process_program_deploy(
         )
     } else {
         (
-            rpc_client
-                .get_minimum_balance_for_rent_exemption(UpgradeableLoaderState::size_of_program())?,
+            rpc_client.get_minimum_balance_for_rent_exemption(
+                UpgradeableLoaderState::size_of_program()
+            )?,
             rpc_client.get_minimum_balance_for_rent_exemption(
                 UpgradeableLoaderState::size_of_programdata(program_data_max_len),
             )?,
@@ -1961,6 +1962,7 @@ fn do_process_program_write_and_deploy(
     // Create and add final message.
     let final_message = if let Some(program_signers) = program_signers {
         let message = if loader_id == &bpf_loader_upgradeable::id() {
+            println!("111111111");
             Message::new_with_blockhash(
                 &bpf_loader_upgradeable::deploy_with_max_program_len(
                     &fee_payer_signer.pubkey(),
@@ -1974,6 +1976,7 @@ fn do_process_program_write_and_deploy(
                 &blockhash,
             )
         } else {
+            println!("22222222");
             Message::new_with_blockhash(
                 &[loader_instruction::finalize(buffer_pubkey, loader_id)],
                 Some(&fee_payer_signer.pubkey()),
@@ -1994,6 +1997,8 @@ fn do_process_program_write_and_deploy(
             .expect("no program signers for --sign-only")
             .to_vec();
         signers.push(fee_payer_signer);
+        println!("(offline) SIGNERS: {:?}", &signers);
+        println!("(offline) TX: {:?}", tx);
         // Using try_partial_sign here because fee_payer_signer might not be the fee payer we
         // end up using for this transaction (it might be NullSigner).
         tx.try_partial_sign(&signers, blockhash)?;
@@ -2326,6 +2331,13 @@ fn send_deploy_messages(
     write_signer: Option<&dyn Signer>,
     final_signers: Option<&[&dyn Signer]>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    println!("send_deploy_messages");
+
+    println!("INITIAL MESSAGE: {:?}", initial_message);
+    println!("WRITE MESSAGES: {:?}", write_messages);
+    println!("FINAL MESSAGE: {:?}", final_message);
+    println!("FINAL SIGNERS: {:?}", final_signers);
+
     let blockhash = blockhash_query.get_blockhash(&rpc_client, config.commitment)?;
 
     if let Some(message) = initial_message {
@@ -2414,6 +2426,8 @@ fn send_deploy_messages(
             let mut final_tx = Transaction::new_unsigned(message.clone());
             let mut signers = final_signers.to_vec();
             signers.push(fee_payer_signer);
+            println!("(online) SIGNERS: {:?}", signers);
+            println!("(online) TX: {:?}", final_tx);
             final_tx.try_sign(&signers, blockhash)?;
             rpc_client
                 .send_and_confirm_transaction_with_spinner_and_config(

@@ -110,10 +110,15 @@ impl Signer for Keypair {
     }
 
     fn try_sign_message(&self, message: &[u8]) -> Result<Signature, SignerError> {
+        println!("Keypair: {:?} --- {:?}", self.pubkey(), message.bytes());
         Ok(self.sign_message(message))
     }
 
     fn is_interactive(&self) -> bool {
+        false
+    }
+
+    fn is_null_signer(&self) -> bool {
         false
     }
 }

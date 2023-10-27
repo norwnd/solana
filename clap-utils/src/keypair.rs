@@ -9,6 +9,8 @@
 //! sources supported by the Solana CLI. Many other functions here are
 //! variations on, or delegate to, `signer_from_path`.
 
+use std::any::Any;
+use itertools::Itertools;
 use {
     crate::{
         input_parsers::{pubkeys_sigs_of, STDOUT_OUTFILE_TOKEN},
@@ -197,10 +199,13 @@ impl DefaultSigner {
     /// `bulk_signers` is a vector of signers, all of which are optional. If any
     /// of those signers is `None`, then the default signer will be loaded; if
     /// all of those signers are `Some`, then the default signer will not be
-    /// loaded.
+    /// loaded. If multiple equivalent (same pub key) signers are provided - only
+    /// one of those will be returned in the result, such that NullSigner(s)
+    /// always get lower priority.
     ///
     /// The returned value includes all of the `bulk_signers` that were not
-    /// `None`, and maybe the default signer, if it was loaded.
+    /// `None`, and maybe the default signer (if it was loaded). There is no
+    /// guarantees on resulting signers ordering.
     ///
     /// # Examples
     ///
@@ -246,17 +251,26 @@ impl DefaultSigner {
         wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
     ) -> Result<CliSignerInfo, Box<dyn error::Error>> {
         let mut unique_signers = vec![];
-
-        // Determine if the default signer is needed
-        if bulk_signers.iter().any(|signer| signer.is_none()) {
-            let default_signer = self.signer_from_path(matches, wallet_manager)?;
-            unique_signers.push(default_signer);
-        }
-
-        for signer in bulk_signers.into_iter().flatten() {
-            if !unique_signers.iter().any(|s| s == &signer) {
-                unique_signers.push(signer);
+        let mut default_signer_added = false;
+        // Group provided signers by pub key
+        for (_, signers) in &bulk_signers.into_iter().group_by(|signer| signer. .pubkey()) {
+            let mut best_signer = signers[0];
+            for signer in signers.skip(1) {
+                if signer.is_none() {
+                    if !default_signer_added {
+                        let default_signer = self.signer_from_path(matches, wallet_manager)?;
+                        unique_signers.push(default_signer);
+                        default_signer_added = true;
+                    }
+                    continue // have to filter out these, cause technically Nones are allowed here
+                }
+                let signer = signer.unwrap();
+                if !signer.is_null_signer() {
+                    best_signer = signer;
+                    break // prefer any signer over null signer
+                }
             }
+            unique_signers.push(best_signer);
         }
         Ok(CliSignerInfo {
             signers: unique_signers,

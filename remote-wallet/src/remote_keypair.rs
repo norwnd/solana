@@ -58,6 +58,10 @@ impl Signer for RemoteKeypair {
     fn is_interactive(&self) -> bool {
         true
     }
+
+    fn is_null_signer(&self) -> bool {
+        false
+    }
 }
 
 pub fn generate_remote_keypair(
