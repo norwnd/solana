@@ -86,7 +86,7 @@ pub trait Signer: Debug {
     fn is_interactive(&self) -> bool;
     /// Whether the implementation is NullSigner
     fn is_null_signer(&self) -> bool {
-        false
+        false // default reusable code
     }
 }
 
@@ -121,8 +121,6 @@ impl<Container: Deref<Target = impl Signer> + Debug> Signer for Container {
     fn is_interactive(&self) -> bool {
         self.deref().is_interactive()
     }
-
-    fn is_null_signer(&self) -> bool { self.deref().is_null_signer() }
 }
 
 impl PartialEq for dyn Signer {

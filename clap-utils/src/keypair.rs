@@ -9,8 +9,6 @@
 //! sources supported by the Solana CLI. Many other functions here are
 //! variations on, or delegate to, `signer_from_path`.
 
-use std::any::Any;
-use itertools::Itertools;
 use {
     crate::{
         input_parsers::{pubkeys_sigs_of, STDOUT_OUTFILE_TOKEN},
@@ -19,6 +17,7 @@ use {
     },
     bip39::{Language, Mnemonic, Seed},
     clap::ArgMatches,
+    itertools::Itertools,
     rpassword::prompt_password,
     solana_remote_wallet::{
         locator::{Locator as RemoteWalletLocator, LocatorError as RemoteWalletLocatorError},
@@ -252,27 +251,25 @@ impl DefaultSigner {
     ) -> Result<CliSignerInfo, Box<dyn error::Error>> {
         let mut unique_signers = vec![];
         // Group provided signers by pub key
-        for (_, mut signers) in &bulk_signers.into_iter().group_by(
-            |signer| -> Pubkey {
-                if let Some(signer) = signer {
-                    return signer.pubkey()
-                }
-                Pubkey::default()
+        for (_, mut signers) in &bulk_signers.into_iter().group_by(|signer| -> Pubkey {
+            if let Some(signer) = signer {
+                return signer.pubkey();
             }
-        ) {
+            Pubkey::default()
+        }) {
             let best_signer = signers.next().unwrap(); // must have at least 1 elem
             if best_signer.is_none() {
                 // If there is a group of None signers, we need to add default one.
                 let default_signer = self.signer_from_path(matches, wallet_manager)?;
                 unique_signers.push(default_signer);
-                continue // nothing else to do for this group
+                continue; // nothing else to do for this group
             }
-            let mut best_signer= best_signer.unwrap(); // TODO (can't be None ?)
+            let mut best_signer = best_signer.unwrap(); // can't be None here
             for signer in signers.skip(1) {
                 let signer = signer.unwrap(); // can't be None here
                 if !signer.is_null_signer() {
                     best_signer = signer;
-                    break // prefer any signer over null signer
+                    break; // prefer any signer over null signer
                 }
             }
             unique_signers.push(best_signer);

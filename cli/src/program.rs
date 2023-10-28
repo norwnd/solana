@@ -184,6 +184,14 @@ impl ProgramSubCommands for App<'_, '_> {
                                 .help("Upgrade authority [default: the default configured keypair]")
                         )
                         .arg(
+                            Arg::with_name("program")
+                                .long("program")
+                                .value_name("PROGRAM_SIGNER")
+                                .takes_value(true)
+                                .validator(is_valid_signer)
+                                .help("Program account signer. The program data is written to the associated account.")
+                        )
+                        .arg(
                             pubkey!(Arg::with_name("program_id")
                                 .long("program-id")
                                 .value_name("PROGRAM_ID"),
@@ -511,14 +519,25 @@ pub fn parse_program_subcommand(
                 signer_of(matches, "upgrade_authority", wallet_manager)?;
             bulk_signers.push(upgrade_authority);
 
-            let program_pubkey = if let Ok((program_signer, Some(program_pubkey))) =
-                signer_of_allow_null_signer(matches, "program_id", wallet_manager)
+            let mut program_pubkey = if let Ok((program_signer, Some(program_pubkey))) =
+                signer_of_allow_null_signer(matches, "program", wallet_manager)
             {
                 bulk_signers.push(program_signer);
                 Some(program_pubkey)
             } else {
                 None // we'll have to generate it ourselves
             };
+            if program_pubkey.is_none() {
+                // Fall back to `--program-id` parameter then, for backward-compatibility.
+                program_pubkey = if let Ok((program_signer, Some(program_pubkey))) =
+                    signer_of_allow_null_signer(matches, "program_id", wallet_manager)
+                {
+                    bulk_signers.push(program_signer);
+                    Some(program_pubkey)
+                } else {
+                    None // we'll have to generate it ourselves
+                };
+            }
 
             let signer_info =
                 default_signer.generate_unique_signers(bulk_signers, matches, wallet_manager)?;
@@ -1003,100 +1022,100 @@ fn process_program_deploy(
         true // do new deploy
     };
 
-    let (program_data, program_len, program_data_max_len) = if sign_only {
-        (vec![], 0, max_len.expect("expected initialized max_len"))
-    } else {
-        let (program_data, program_len) = if let Some(program_location) = program_location {
-            let program_data = read_and_verify_elf(program_location)?;
-            let program_len = program_data.len();
-            (program_data, program_len)
-        } else if buffer_provided {
-            // Check supplied buffer account.
-            if let Some(account) = rpc_client
-                .get_account_with_commitment(&buffer_pubkey, config.commitment)?
-                .value
-            {
-                if !bpf_loader_upgradeable::check_id(&account.owner) {
-                    return Err(format!(
-                        "Buffer account {buffer_pubkey} is not owned by the BPF Upgradeable Loader",
-                    )
-                    .into());
-                }
-
-                match account.state() {
-                    Ok(UpgradeableLoaderState::Buffer { .. }) => {
-                        // continue if buffer is initialized
-                    }
-                    Ok(UpgradeableLoaderState::Program { .. }) => {
-                        return Err(format!(
-                            "Cannot use program account {buffer_pubkey} as buffer"
-                        )
-                        .into());
-                    }
-                    Ok(UpgradeableLoaderState::ProgramData { .. }) => {
-                        return Err(format!(
-                            "Cannot use program data account {buffer_pubkey} as buffer",
-                        )
-                        .into())
-                    }
-                    Ok(UpgradeableLoaderState::Uninitialized) => {
-                        return Err(
-                            format!("Buffer account {buffer_pubkey} is not initialized").into()
-                        );
-                    }
-                    Err(_) => {
-                        return Err(format!(
-                            "Buffer account {buffer_pubkey} could not be deserialized"
-                        )
-                        .into())
-                    }
-                };
-
-                let program_len = account
-                    .data
-                    .len()
-                    .saturating_sub(UpgradeableLoaderState::size_of_buffer_metadata());
-
-                (vec![], program_len)
-            } else {
+    let (program_data, program_len) = if sign_only {
+        (vec![], 0) // irrelevant for sign-only mode
+    } else if let Some(program_location) = program_location {
+        let program_data = read_and_verify_elf(program_location)?;
+        let program_len = program_data.len();
+        (program_data, program_len)
+    } else if buffer_provided {
+        // Check supplied buffer account.
+        if let Some(account) = rpc_client
+            .get_account_with_commitment(&buffer_pubkey, config.commitment)?
+            .value
+        {
+            if !bpf_loader_upgradeable::check_id(&account.owner) {
                 return Err(format!(
-                    "Buffer account {buffer_pubkey} not found, was it already consumed?",
+                    "Buffer account {buffer_pubkey} is not owned by the BPF Upgradeable Loader",
                 )
                 .into());
             }
-        } else {
-            return Err("Program location required if buffer not supplied".into());
-        };
-        let programdata_max_len = if let Some(len) = max_len {
-            if program_len > len {
-                return Err("Max length specified not large enough".into());
-            }
-            len
-        } else if is_final {
-            program_len
-        } else {
-            program_len * 2
-        };
 
-        (program_data, program_len, programdata_max_len)
-    };
+            match account.state() {
+                Ok(UpgradeableLoaderState::Buffer { .. }) => {
+                    // continue if buffer is initialized
+                }
+                Ok(UpgradeableLoaderState::Program { .. }) => {
+                    return Err(
+                        format!("Cannot use program account {buffer_pubkey} as buffer").into(),
+                    );
+                }
+                Ok(UpgradeableLoaderState::ProgramData { .. }) => {
+                    return Err(format!(
+                        "Cannot use program data account {buffer_pubkey} as buffer",
+                    )
+                    .into())
+                }
+                Ok(UpgradeableLoaderState::Uninitialized) => {
+                    return Err(format!("Buffer account {buffer_pubkey} is not initialized").into());
+                }
+                Err(_) => {
+                    return Err(
+                        format!("Buffer account {buffer_pubkey} could not be deserialized").into(),
+                    )
+                }
+            };
 
-    let (min_rent_exempt_program_balance, min_rent_exempt_program_data_balance) = if sign_only {
-        (
-            min_rent_exempt_program_balance
-                .expect("expected initialized min_rent_exempt_program_balance"),
-            0,
-        )
+            let program_len = account
+                .data
+                .len()
+                .saturating_sub(UpgradeableLoaderState::size_of_buffer_metadata());
+
+            (vec![], program_len)
+        } else {
+            return Err(format!(
+                "Buffer account {buffer_pubkey} not found, was it already consumed?",
+            )
+            .into());
+        }
     } else {
-        (
-            rpc_client.get_minimum_balance_for_rent_exemption(
-                UpgradeableLoaderState::size_of_program()
-            )?,
-            rpc_client.get_minimum_balance_for_rent_exemption(
-                UpgradeableLoaderState::size_of_programdata(program_data_max_len),
-            )?,
-        )
+        return Err("Program location required if buffer not supplied".into());
     };
+
+    let program_data_max_len = if !do_initial_deploy {
+        0 // irrelevant for program upgrades
+    } else if let Some(len) = max_len {
+        if program_len > len {
+            return Err("Max length specified not large enough".into());
+        }
+        len
+    } else if sign_only {
+        return Err("Expected initialized max_len in sign-only mode, when performing initial program deploy (not upgrade)".into());
+    } else if is_final {
+        program_len
+    } else {
+        program_len * 2
+    };
+
+    let (min_rent_exempt_program_balance, min_rent_exempt_program_data_balance) =
+        if !do_initial_deploy {
+            (0, 0) // irrelevant for program upgrades
+        } else if sign_only {
+            (
+                min_rent_exempt_program_balance
+                    .expect("expected initialized min_rent_exempt_program_balance"),
+                0,
+            )
+        } else {
+            (
+                rpc_client.get_minimum_balance_for_rent_exemption(
+                    UpgradeableLoaderState::size_of_program(),
+                )?,
+                rpc_client.get_minimum_balance_for_rent_exemption(
+                    UpgradeableLoaderState::size_of_programdata(program_data_max_len),
+                )?,
+            )
+        };
 
     let result = if do_initial_deploy {
         do_process_program_write_and_deploy(

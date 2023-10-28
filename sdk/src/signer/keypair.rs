@@ -117,10 +117,6 @@ impl Signer for Keypair {
     fn is_interactive(&self) -> bool {
         false
     }
-
-    fn is_null_signer(&self) -> bool {
-        false
-    }
 }
 
 impl<T> PartialEq<T> for Keypair

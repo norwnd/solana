@@ -164,9 +164,6 @@ mod tests {
         fn is_interactive(&self) -> bool {
             false
         }
-        fn is_null_signer(&self) -> bool {
-            false
-        }
     }
 
     #[derive(Debug)]
@@ -179,9 +176,6 @@ mod tests {
             Ok(Signature::default())
         }
         fn is_interactive(&self) -> bool {
-            false
-        }
-        fn is_null_signer(&self) -> bool {
             false
         }
     }

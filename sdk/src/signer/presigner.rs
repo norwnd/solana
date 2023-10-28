@@ -1,13 +1,13 @@
 #![cfg(feature = "full")]
 
-use std::io::Read;
-use itertools::Itertools;
 use {
     crate::{
         pubkey::Pubkey,
         signature::Signature,
         signer::{Signer, SignerError},
     },
+    itertools::Itertools,
+    std::io::Read,
     thiserror::Error,
 };
 
@@ -51,10 +51,6 @@ impl Signer for Presigner {
     }
 
     fn is_interactive(&self) -> bool {
-        false
-    }
-
-    fn is_null_signer(&self) -> bool {
         false
     }
 }

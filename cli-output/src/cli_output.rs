@@ -3169,10 +3169,6 @@ mod tests {
             fn is_interactive(&self) -> bool {
                 false
             }
-
-            fn is_null_signer(&self) -> bool {
-                false
-            }
         }
 
         let present: Box<dyn Signer> = Box::new(keypair_from_seed(&[2u8; 32]).unwrap());
