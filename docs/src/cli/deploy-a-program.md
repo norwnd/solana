@@ -258,10 +258,10 @@ solana program dump <ACCOUNT_ADDRESS> <OUTPUT_FILEPATH>
 The dumped file will be in the same as what was deployed, so in the case of a
 shared object (the program binary .so), the dumped file will be a fully functional shared object. Note
 that the `dump` command dumps the entire data space, which means the output file
-will have trailing zeros after the shared object's data up to `max_len`.
+might have trailing zeros after the shared object's data up to `max_len`.
 Sometimes it is useful to dump and compare a program to ensure it matches a
-known program binary. The original program file can be zero-extended, hashed,
-and compared to the hash of the dumped file.
+known program binary. The dumped file can be zero-truncated, hashed,
+and compared to the hash of the original program file.
 
 ```bash
 $ solana dump <ACCOUNT_ADDRESS> dump.so
@@ -303,10 +303,16 @@ buffer accounts contents are copied into program accounts and are erased from bl
 
 Buffers also support `show` and `dump` just like programs do.
 
-### Deploying program with offline signer authority
+### Managing (deploying/upgrading) program using offline signer as authority
 
-Suggestion: the simplest way to do offline signing is to arrange your signers such that `--program-id`,
-`--buffer-authority` and `--upgrade-authority` correspond to offline signer (key-pair).
+Storing private key(s) on machine without internet access (offline signer) is much safer compared to
+storing them on machine with internet access (online signer), this section describes how to do that.
+
+Below we assume (for simplicity) a setup with 3 different pairs of keys:
+- online signer (used as fee payer for deploying program buffer, deploying/upgrading program itself)
+- offline signer (serves as authority over program deploys/upgrades, protects program deploys/upgrades
+  from certain types of attacks)
+- program signer (typically, generated when program has been compiled into `.so` file)
 
 The general process is as follows:
 1) (use online machine) create buffer
@@ -320,13 +326,13 @@ The general process is as follows:
 solana program write-buffer <PROGRAM_FILEPATH>
 
 # (2) (use online machine) upgrade buffer authority to offline signer
-solana program set-buffer-authority <PUB_KEY> --new-buffer-authority <PUB_KEY>
+solana program set-buffer-authority <ONLINE_SIGNER_PUB_KEY> --new-buffer-authority <OFFLINE_SIGNER_PUB_KEY>
 ```
 
-- note, above we have to issue a separate `set-buffer-authority` command (using online machine) to change authority to
-  be that of offline signer because we don't have access to offline signer private key to sign up as buffer authority
-  when running `solana program write-buffer` command using online machine (offline signer private key is stored on
-  offline machine)
+- note, above we have to issue a separate `solana program set-buffer-authority` command (using online machine) to 
+  change authority to be that of offline signer because we don't have access to offline signer private key to sign 
+  up as buffer authority when running `solana program write-buffer` command using online machine (offline signer 
+  private key is stored on offline machine), and `solana program set-buffer-authority` doesn't impose that requirement.
 
 (3) This is where you'd want to verify the program (or program buffer) uploaded to buffer indeed matches source code,
 the most secure way to do it would be to compile program source code on a different online machine (not the same
@@ -334,23 +340,26 @@ online machine that deploys your program, because it could be compromised) and c
 program data residing on-chain. See how you can [dump on-chain program into a file](deploy-a-program.md#dumping-a-program-to-a-file)
 to verify it.
 
-After program buffer has been verified and indeed contains the compiled result of intended source code - we are ready
-to sign program deploy (to create brand-new program or upgrade existing one), fill in all required parameters below
-(<WHATEVER_PARAM> values).
+After program buffer has been verified and is believed to contain the compiled result of intended source code - we are 
+ready to sign program deploy (to create brand-new program or upgrade existing one), fill in all required parameters 
+below (<WHATEVER_PARAM> values).
 
 ```bash
 # (4) (use offline machine) get a signature for your intent to CREATE program
-solana program deploy --sign-only --program-id <PUB_KEY> --upgrade-authority <SIGNER> --buffer <PUB_KEY> --blockhash <VALUE> --max-len <VALUE> --min-rent-balance <VALUE>
+solana program deploy --sign-only --fee-payer <ONLINE_SIGNER_PUB_KEY> --program <PROGRAM_SIGNER_PUB_KEY> --upgrade-authority <OFFLINE_SIGNER> --buffer <BUFFER_PUB_KEY> --blockhash <VALUE> --max-len <VALUE> --min-rent-balance <VALUE>
 # or (4) (use offline machine) get a signature for your intent to UPGRADE program
-solana program deploy --sign-only --upgrade --program-id <PUB_KEY> --upgrade-authority <SIGNER> --buffer <PUB_KEY> --blockhash <VALUE> --max-len <VALUE> --min-rent-balance <VALUE>
+solana program deploy --sign-only --upgrade --fee-payer <ONLINE_SIGNER_PUB_KEY> --program <PROGRAM_SIGNER_PUB_KEY> --upgrade-authority <OFFLINE_SIGNER> --buffer <BUFFER_PUB_KEY> --blockhash <VALUE>
 
 # (5) (use online machine) use this signature to build and broadcast create transactions on-chain
-solana program deploy --program-id <PUB_KEY> --upgrade-authority <PUB_KEY> --buffer <PUB_KEY> --blockhash <VALUE> --max-len <VALUE> --signer <SIGNATURE>
+solana program deploy --fee-payer <ONLINE_SIGNER> --program <PROGRAM_SIGNER> --upgrade-authority <OFFLINE_SIGNER_PUB_KEY> --buffer <BUFFER_PUB_KEY> --blockhash <VALUE> --max-len <VALUE> --signer <OFFLINE_SIGNER_SIGNATURE>
 # or (5) (use online machine) use this signature to build and broadcast upgrade transactions on-chain
-solana program deploy --program-id <PUB_KEY> --upgrade-authority <PUB_KEY> --buffer <PUB_KEY> --blockhash <VALUE> --max-len <VALUE> --signer <SIGNATURE>
+solana program deploy --fee-payer <ONLINE_SIGNER> --program <PROGRAM_SIGNER> --upgrade-authority <OFFLINE_SIGNER_PUB_KEY> --buffer <BUFFER_PUB_KEY> --blockhash <VALUE> --signer <OFFLINE_SIGNER_SIGNATURE>
 ```
-Note, you should pre-fill every value except for `blockhash` ahead of time (typically, the output of the previous
-command(s) will contain some values useful in subsequent commands, e.g. `buffer`, `--max-len`, `--min-rent-balance`),
-and once you are ready to act - you'll need to look up fresh `blockhash` and paste it in quickly + do your signing,
-you have ~60 seconds before `blockhash` expires. If you didn't make it in time - just get another fresh hash and repeat
-until you succeed, or consider using [durable transaction nonces](../offline-signing/durable-nonce.md).
+Note:
+- typically, the output of the previous command(s) will contain some values useful in subsequent commands, e.g. 
+  `--buffer`, `--max-len`, `--min-rent-balance` (and you need to specify proper values for those in `--sign-only` mode
+  because on offline machine there is no way to query values online)
+- you should pre-fill every value except for `blockhash` ahead of time, and once you are ready to act - you'll need to 
+  look up fresh `blockhash` and paste it in quickly + do your signing, you have ~60 seconds before `blockhash` expires. 
+  If you didn't make it in time - just get another fresh hash and repeat until you succeed, or consider using 
+  [durable transaction nonces](../offline-signing/durable-nonce.md).

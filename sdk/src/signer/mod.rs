@@ -82,8 +82,12 @@ pub trait Signer: Debug {
     }
     /// Fallibly produces an Ed25519 signature over the provided `message` bytes.
     fn try_sign_message(&self, message: &[u8]) -> Result<Signature, SignerError>;
-    /// Whether the impelmentation requires user interaction to sign
+    /// Whether the implementation requires user interaction to sign
     fn is_interactive(&self) -> bool;
+    /// Whether the implementation is NullSigner
+    fn is_null_signer(&self) -> bool {
+        false // default reusable code
+    }
 }
 
 impl<T> From<T> for Box<dyn Signer>
@@ -95,6 +99,7 @@ where
     }
 }
 
+/// This impl allows using Signer with types like Box/Rc/Arc.
 impl<Container: Deref<Target = impl Signer> + Debug> Signer for Container {
     #[inline]
     fn pubkey(&self) -> Pubkey {
