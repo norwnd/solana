@@ -2090,6 +2090,8 @@ impl fmt::Display for CliProgramId {
 #[serde(rename_all = "camelCase")]
 pub struct CliProgramBuffer {
     pub buffer: String,
+    pub program_data_max_len: usize,
+    pub min_rent_exempt_program_balance: u64,
 }
 
 impl QuietDisplay for CliProgramBuffer {}
@@ -2097,7 +2099,17 @@ impl VerboseDisplay for CliProgramBuffer {}
 
 impl fmt::Display for CliProgramBuffer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln_name_value(f, "Buffer:", &self.buffer)
+        writeln_name_value(f, "Buffer:", &self.buffer)?;
+        writeln_name_value(
+            f,
+            "Program data max length:",
+            &format!("{:?}", self.program_data_max_len),
+        )?;
+        writeln_name_value(
+            f,
+            "Min rent-exempt program balance:",
+            &format!("{:?}", self.min_rent_exempt_program_balance),
+        )
     }
 }
 
@@ -3154,6 +3166,7 @@ mod tests {
 
     #[test]
     fn test_return_signers() {
+        #[derive(Debug)]
         struct BadSigner {
             pubkey: Pubkey,
         }
