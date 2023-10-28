@@ -251,20 +251,25 @@ impl DefaultSigner {
         wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
     ) -> Result<CliSignerInfo, Box<dyn error::Error>> {
         let mut unique_signers = vec![];
-        let mut default_signer_added = false;
         // Group provided signers by pub key
-        for (_, signers) in &bulk_signers.into_iter().group_by(|signer| signer. .pubkey()) {
-            let mut best_signer = signers[0];
-            for signer in signers.skip(1) {
-                if signer.is_none() {
-                    if !default_signer_added {
-                        let default_signer = self.signer_from_path(matches, wallet_manager)?;
-                        unique_signers.push(default_signer);
-                        default_signer_added = true;
-                    }
-                    continue // have to filter out these, cause technically Nones are allowed here
+        for (_, mut signers) in &bulk_signers.into_iter().group_by(
+            |signer| -> Pubkey {
+                if let Some(signer) = signer {
+                    return signer.pubkey()
                 }
-                let signer = signer.unwrap();
+                Pubkey::default()
+            }
+        ) {
+            let best_signer = signers.next().unwrap(); // must have at least 1 elem
+            if best_signer.is_none() {
+                // If there is a group of None signers, we need to add default one.
+                let default_signer = self.signer_from_path(matches, wallet_manager)?;
+                unique_signers.push(default_signer);
+                continue // nothing else to do for this group
+            }
+            let mut best_signer= best_signer.unwrap(); // TODO (can't be None ?)
+            for signer in signers.skip(1) {
+                let signer = signer.unwrap(); // can't be None here
                 if !signer.is_null_signer() {
                     best_signer = signer;
                     break // prefer any signer over null signer

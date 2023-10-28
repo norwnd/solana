@@ -258,10 +258,10 @@ solana program dump <ACCOUNT_ADDRESS> <OUTPUT_FILEPATH>
 The dumped file will be in the same as what was deployed, so in the case of a
 shared object (the program binary .so), the dumped file will be a fully functional shared object. Note
 that the `dump` command dumps the entire data space, which means the output file
-will have trailing zeros after the shared object's data up to `max_len`.
+might have trailing zeros after the shared object's data up to `max_len`.
 Sometimes it is useful to dump and compare a program to ensure it matches a
-known program binary. The original program file can be zero-extended, hashed,
-and compared to the hash of the dumped file.
+known program binary. The dumped file can be zero-truncated, hashed,
+and compared to the hash of the original program file.
 
 ```bash
 $ solana dump <ACCOUNT_ADDRESS> dump.so
