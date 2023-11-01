@@ -49,7 +49,7 @@ pub fn build_spl_token_instructions(
         .spl_token_args
         .as_ref()
         .expect("spl_token_args must be some");
-    let wallet_address = allocation.recipient;
+    let wallet_address = allocation.recipient.parse().unwrap();
     let associated_token_address =
         get_associated_token_address(&wallet_address, &spl_token_args.mint);
     let mut instructions = vec![];
@@ -119,7 +119,7 @@ pub fn print_token_balances(
     allocation: &Allocation,
     spl_token_args: &SplTokenArgs,
 ) -> Result<(), Error> {
-    let address = allocation.recipient;
+    let address = allocation.recipient.parse().unwrap();
     let expected = allocation.amount;
     let associated_token_address = get_associated_token_address(&address, &spl_token_args.mint);
     let recipient_account = client
