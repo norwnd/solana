@@ -15,14 +15,19 @@ use {
     solana_sdk::{
         account_utils::StateMut,
         bpf_loader_upgradeable::{self, UpgradeableLoaderState},
-        clock::Slot,
         commitment_config::CommitmentConfig,
         pubkey::Pubkey,
         signature::{Keypair, NullSigner, Presigner, Signature, Signer},
     },
     solana_streamer::socket::SocketAddrSpace,
     solana_test_validator::TestValidator,
-    std::{env, fs::File, io::Read, path::PathBuf, str::FromStr},
+    std::{
+        env,
+        fs::File,
+        io::Read,
+        path::{Path, PathBuf},
+        str::FromStr,
+    },
 };
 
 #[test]
@@ -2183,8 +2188,8 @@ fn test_cli_program_dump() {
     }
 }
 
-fn fetch_pre_signer(cmd_output_json_str: &String, target_pub_key: &String) -> Presigner {
-    let json: Value = serde_json::from_str(&cmd_output_json_str).unwrap();
+fn fetch_pre_signer(cmd_output_json_str: &str, target_pub_key: &str) -> Presigner {
+    let json: Value = serde_json::from_str(cmd_output_json_str).unwrap();
     let target_pre_signer_str = json
         .as_object()
         .unwrap()
@@ -2197,7 +2202,7 @@ fn fetch_pre_signer(cmd_output_json_str: &String, target_pub_key: &String) -> Pr
         .unwrap()
         .as_str()
         .unwrap();
-    let mut parts = target_pre_signer_str.split("=");
+    let mut parts = target_pre_signer_str.split('=');
     assert_eq!(2, parts.clone().count());
     Presigner::new(
         &Pubkey::from_str(parts.next().unwrap()).unwrap(),
@@ -2207,7 +2212,7 @@ fn fetch_pre_signer(cmd_output_json_str: &String, target_pub_key: &String) -> Pr
 
 fn create_buffer_with_offline_authority<'a>(
     rpc_client: &RpcClient,
-    program_path: &PathBuf,
+    program_path: &Path,
     config: &mut CliConfig<'a>,
     online_signer: &'a Keypair,
     offline_signer: &'a Keypair,
@@ -2226,7 +2231,7 @@ fn create_buffer_with_offline_authority<'a>(
         max_len: None,
         skip_fee_check: false,
     });
-    process_command(&config).unwrap();
+    process_command(config).unwrap();
     let buffer_account = rpc_client.get_account(&buffer_signer.pubkey()).unwrap();
     if let UpgradeableLoaderState::Buffer { authority_address } = buffer_account.state().unwrap() {
         assert_eq!(authority_address, Some(online_signer.pubkey()));
@@ -2242,7 +2247,7 @@ fn create_buffer_with_offline_authority<'a>(
         new_buffer_authority: offline_signer.pubkey(),
     });
     config.output_format = OutputFormat::JsonCompact;
-    let response = process_command(&config);
+    let response = process_command(config);
     let json: Value = serde_json::from_str(&response.unwrap()).unwrap();
     let offline_signer_authority_str = json
         .as_object()
@@ -2281,7 +2286,7 @@ fn create_buffer_with_offline_authority<'a>(
         min_rent_balance: Some(minimum_balance_for_program),
     });
     config.output_format = OutputFormat::JsonCompact;
-    let error = process_command(&config).unwrap_err();
+    let error = process_command(config).unwrap_err();
     assert_eq!(error.to_string(), "Deploying program failed: RPC response error -32002: Transaction simulation failed: Error processing Instruction 1: Incorrect authority provided [5 log messages]");
 }
 
@@ -2294,7 +2299,7 @@ fn verify_deployed_program<'a>(
     max_program_data_len: usize,
 ) {
     let min_slot = rpc_client.get_slot().unwrap();
-    process_command(&config).unwrap();
+    process_command(config).unwrap();
     let max_slot = rpc_client.get_slot().unwrap();
 
     // Verify show
@@ -2307,7 +2312,7 @@ fn verify_deployed_program<'a>(
         all: false,
         use_lamports_unit: false,
     });
-    let response = process_command(&config);
+    let response = process_command(config);
     let json: Value = serde_json::from_str(&response.unwrap()).unwrap();
     let address_str = json
         .as_object()

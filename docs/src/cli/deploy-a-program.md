@@ -13,7 +13,7 @@ To deploy a program, use the Solana tools to interact with the on-chain loader
 to:
 
 - Initialize a program account
-- Upload the program's shared object (the program binary .so) to the program account's data buffer
+- Upload the program's shared object (the program binary `.so`) to the program account's data buffer
 - (optional) Verify the uploaded program
 - Finalize the program by marking the program account executable.
 
@@ -25,7 +25,7 @@ reference it to the cluster.
 ### Deploy a program
 
 To deploy a program, you will need the location of the program's shared object
-(the program binary .so):
+(the program binary `.so`):
 
 ```bash
 solana program deploy <PROGRAM_FILEPATH>
@@ -256,7 +256,7 @@ solana program dump <ACCOUNT_ADDRESS> <OUTPUT_FILEPATH>
 ```
 
 The dumped file will be in the same as what was deployed, so in the case of a
-shared object (the program binary .so), the dumped file will be a fully functional shared object. Note
+shared object (the program binary `.so`), the dumped file will be a fully functional shared object. Note
 that the `dump` command dumps the entire data space, which means the output file
 might have trailing zeros after the shared object's data up to `max_len`.
 Sometimes it is useful to dump and compare a program to ensure it matches a
@@ -342,7 +342,7 @@ to verify it.
 
 After program buffer has been verified and is believed to contain the compiled result of intended source code - we are 
 ready to sign program deploy (to create brand-new program or upgrade existing one), fill in all required parameters 
-below (<WHATEVER_PARAM> values).
+below (<WHATEVER_VALUE> values).
 
 ```bash
 # (4) (use offline machine) get a signature for your intent to CREATE program

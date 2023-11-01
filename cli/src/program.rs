@@ -2210,6 +2210,7 @@ fn do_process_program_write_and_deploy(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn do_process_program_upgrade(
     rpc_client: Arc<RpcClient>,
     config: &CliConfig,
@@ -2319,11 +2320,9 @@ fn do_process_program_upgrade(
         Some(&fee_payer_signer.pubkey()),
         &blockhash,
     );
-    let final_message = Some(final_message);
 
     if sign_only {
-        let message = final_message.expect("no final message for --sign-only mode");
-        let mut tx = Transaction::new_unsigned(message);
+        let mut tx = Transaction::new_unsigned(final_message);
         let signers = &[fee_payer_signer, upgrade_authority];
         // Using try_partial_sign here because fee_payer_signer might not be the fee payer we
         // end up using for this transaction (it might be NullSigner).
@@ -2336,6 +2335,8 @@ fn do_process_program_upgrade(
             },
         )
     } else {
+        let final_message = Some(final_message);
+
         if !skip_fee_check {
             check_payer(
                 &rpc_client,
@@ -2470,7 +2471,7 @@ fn check_payer(
     }
     check_account_for_spend_and_fee_with_commitment(
         rpc_client,
-        &fee_payer_pubkey,
+        fee_payer_pubkey,
         balance_needed,
         fee,
         config.commitment,
@@ -2478,6 +2479,7 @@ fn check_payer(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn send_deploy_messages(
     rpc_client: Arc<RpcClient>,
     blockhash_query: &BlockhashQuery,
