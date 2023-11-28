@@ -965,7 +965,9 @@ fn get_default_program_keypair(program_location: &Option<String>) -> Keypair {
     program_keypair
 }
 
-/// Deploy using upgradeable loader
+/// Deploy using upgradeable loader. It also can process program upgrades for
+/// backward-compatibility purposes, but otherwise - process_program_upgrade should
+/// be used for program upgrades instead.
 #[allow(clippy::too_many_arguments)]
 fn process_program_deploy(
     rpc_client: Arc<RpcClient>,
@@ -980,7 +982,6 @@ fn process_program_deploy(
     allow_excessive_balance: bool,
     skip_fee_check: bool,
     sign_only: bool,
-    upgrade: Option<bool>,
     dump_transaction_message: bool,
     blockhash_query: &BlockhashQuery,
     min_rent_exempt_program_balance: Option<u64>,
@@ -1009,10 +1010,8 @@ fn process_program_deploy(
         )
     };
 
-    let do_initial_deploy = if let Some(upgrade) = upgrade {
-        !upgrade // continue with whatever user explicitly specified (mostly necessary for --sign-only mode)
-    } else if sign_only {
-        panic!("None value isn't acceptable for `upgrade` when in --sign-only mode");
+    let do_initial_deploy = if sign_only {
+        true; // process_program_deploy supports only 1st time deploys in --sign-only mode
     } else if let Some(account) = rpc_client
         .get_account_with_commitment(&program_pubkey, config.commitment)?
         .value
@@ -1137,9 +1136,7 @@ fn process_program_deploy(
             return Err("Max length specified not large enough".into());
         }
         len
-    } else if sign_only && !do_initial_deploy {
-        0 // irrelevant for program upgrades (specifically in sign-only mode!)
-    } else if sign_only && do_initial_deploy {
+    } else if sign_only {
         return Err("Expected initialized max_len in sign-only mode, when performing initial program deploy (not upgrade)".into());
     } else if is_final {
         program_len
@@ -1147,11 +1144,7 @@ fn process_program_deploy(
         program_len * 2
     };
 
-    let (min_rent_exempt_program_balance, min_rent_exempt_program_data_balance) = if sign_only
-        && !do_initial_deploy
-    {
-        (0, 0) // irrelevant for program upgrades (specifically in sign-only mode!)
-    } else if sign_only && do_initial_deploy {
+    let (min_rent_exempt_program_balance, min_rent_exempt_program_data_balance) = if sign_only {
         (
             min_rent_exempt_program_balance
                 .expect("expected initialized min_rent_exempt_program_balance"),
@@ -1206,6 +1199,163 @@ fn process_program_deploy(
             blockhash_query,
         )
     };
+    if result.is_ok() && is_final {
+        process_set_authority(
+            &rpc_client,
+            config,
+            Some(program_pubkey),
+            None,
+            Some(upgrade_authority_signer_index),
+            None,
+        )?;
+    }
+    if result.is_err() && !buffer_provided {
+        report_ephemeral_mnemonic(words, mnemonic);
+    }
+    result
+}
+
+/// Upgrade existing program using upgradeable loader
+fn process_program_upgrade(
+    rpc_client: Arc<RpcClient>,
+    config: &CliConfig,
+    program_location: &Option<String>,
+    fee_payer_signer_index: SignerIndex,
+    program_signer_index: Option<SignerIndex>,
+    buffer_signer_index: Option<SignerIndex>,
+    upgrade_authority_signer_index: SignerIndex,
+    is_final: bool,
+    max_len: Option<usize>,
+    skip_fee_check: bool,
+    sign_only: bool,
+    dump_transaction_message: bool,
+    blockhash_query: &BlockhashQuery,
+) -> ProcessResult {
+    let fee_payer_signer = config.signers[fee_payer_signer_index];
+    let upgrade_authority_signer = config.signers[upgrade_authority_signer_index];
+
+    let (words, mnemonic, buffer_keypair) = create_ephemeral_keypair()?;
+    let (buffer_provided, buffer_signer, buffer_pubkey) = if let Some(i) = buffer_signer_index {
+        (true, Some(config.signers[i]), config.signers[i].pubkey())
+    } else {
+        (
+            false,
+            Some(&buffer_keypair as &dyn Signer),
+            buffer_keypair.pubkey(),
+        )
+    };
+
+    let default_program_keypair = get_default_program_keypair(program_location);
+    let (program_signer, program_pubkey) = if let Some(i) = program_signer_index {
+        (Some(config.signers[i]), config.signers[i].pubkey())
+    } else {
+        (
+            Some(&default_program_keypair as &dyn Signer),
+            default_program_keypair.pubkey(),
+        )
+    };
+
+    let (program_data, program_len) = if sign_only {
+        (vec![], 0) // irrelevant for sign-only mode
+    } else if let Some(program_location) = program_location {
+        let program_data = read_and_verify_elf(program_location)?;
+        let program_len = program_data.len();
+        (program_data, program_len)
+    } else if buffer_provided {
+        // Check supplied buffer account.
+        if let Some(account) = rpc_client
+            .get_account_with_commitment(&buffer_pubkey, config.commitment)?
+            .value
+        {
+            if !bpf_loader_upgradeable::check_id(&account.owner) {
+                return Err(format!(
+                    "Buffer account {buffer_pubkey} is not owned by the BPF Upgradeable Loader",
+                )
+                    .into());
+            }
+
+            match account.state() {
+                Ok(UpgradeableLoaderState::Buffer { .. }) => {
+                    // continue if buffer is initialized
+                }
+                Ok(UpgradeableLoaderState::Program { .. }) => {
+                    return Err(
+                        format!("Cannot use program account {buffer_pubkey} as buffer").into(),
+                    );
+                }
+                Ok(UpgradeableLoaderState::ProgramData { .. }) => {
+                    return Err(format!(
+                        "Cannot use program data account {buffer_pubkey} as buffer",
+                    )
+                        .into())
+                }
+                Ok(UpgradeableLoaderState::Uninitialized) => {
+                    return Err(format!("Buffer account {buffer_pubkey} is not initialized").into());
+                }
+                Err(_) => {
+                    return Err(
+                        format!("Buffer account {buffer_pubkey} could not be deserialized").into(),
+                    )
+                }
+            };
+
+            let program_len = account
+                .data
+                .len()
+                .saturating_sub(UpgradeableLoaderState::size_of_buffer_metadata());
+
+            (vec![], program_len)
+        } else {
+            return Err(format!(
+                "Buffer account {buffer_pubkey} not found, was it already consumed?",
+            )
+                .into());
+        }
+    } else {
+        return Err("Program location required if buffer not supplied".into());
+    };
+
+    let program_data_max_len = if let Some(len) = max_len {
+        if program_len > len {
+            return Err("Max length specified not large enough".into());
+        }
+        len
+    } else if sign_only {
+        0 // irrelevant for program upgrades in sign-only mode
+    } else if is_final {
+        program_len
+    } else {
+        program_len * 2
+    };
+
+    let (min_rent_exempt_program_balance, min_rent_exempt_program_data_balance) = if sign_only {
+        (0, 0) // irrelevant for program upgrades in sign-only mode
+    } else {
+        (
+            rpc_client
+                .get_minimum_balance_for_rent_exemption(UpgradeableLoaderState::size_of_program())?,
+            rpc_client.get_minimum_balance_for_rent_exemption(
+                UpgradeableLoaderState::size_of_programdata(program_data_max_len),
+            )?,
+        )
+    };
+
+    let result = do_process_program_upgrade(
+            rpc_client.clone(),
+            config,
+            &program_data,
+            program_len,
+            min_rent_exempt_program_data_balance,
+            fee_payer_signer,
+            &program_pubkey,
+            upgrade_authority_signer,
+            &buffer_pubkey,
+            buffer_signer,
+            skip_fee_check,
+            sign_only,
+            dump_transaction_message,
+            blockhash_query,
+    );
     if result.is_ok() && is_final {
         process_set_authority(
             &rpc_client,
