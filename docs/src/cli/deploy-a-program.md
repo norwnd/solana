@@ -350,9 +350,9 @@ solana program deploy --sign-only --fee-payer <ONLINE_SIGNER_PUB_KEY> --program 
 # or (4) (use offline machine) get a signature for your intent to UPGRADE program
 solana program deploy --sign-only --upgrade --fee-payer <ONLINE_SIGNER_PUB_KEY> --program <PROGRAM_SIGNER_PUB_KEY> --upgrade-authority <OFFLINE_SIGNER> --buffer <BUFFER_PUB_KEY> --blockhash <VALUE>
 
-# (5) (use online machine) use this signature to build and broadcast create transactions on-chain
+# (5) (use online machine) use this signature to build and broadcast CREATE transactions on-chain
 solana program deploy --fee-payer <ONLINE_SIGNER> --program <PROGRAM_SIGNER> --upgrade-authority <OFFLINE_SIGNER_PUB_KEY> --buffer <BUFFER_PUB_KEY> --blockhash <VALUE> --max-len <VALUE> --signer <OFFLINE_SIGNER_SIGNATURE>
-# or (5) (use online machine) use this signature to build and broadcast upgrade transactions on-chain
+# or (5) (use online machine) use this signature to build and broadcast UPGRADE transactions on-chain
 solana program deploy --fee-payer <ONLINE_SIGNER> --program <PROGRAM_SIGNER> --upgrade-authority <OFFLINE_SIGNER_PUB_KEY> --buffer <BUFFER_PUB_KEY> --blockhash <VALUE> --signer <OFFLINE_SIGNER_SIGNATURE>
 ```
 Note:

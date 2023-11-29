@@ -1246,13 +1246,10 @@ fn process_program_upgrade(
     };
 
     let default_program_keypair = get_default_program_keypair(program_location);
-    let (program_signer, program_pubkey) = if let Some(i) = program_signer_index {
-        (Some(config.signers[i]), config.signers[i].pubkey())
+    let (program_pubkey) = if let Some(i) = program_signer_index {
+        config.signers[i].pubkey()
     } else {
-        (
-            Some(&default_program_keypair as &dyn Signer),
-            default_program_keypair.pubkey(),
-        )
+        default_program_keypair.pubkey()
     };
 
     let (program_data, program_len) = if sign_only {
@@ -1261,7 +1258,7 @@ fn process_program_upgrade(
         let program_data = read_and_verify_elf(program_location)?;
         let program_len = program_data.len();
         (program_data, program_len)
-    } else if buffer_provided {
+    } else if buffer_provided { // TODO
         // Check supplied buffer account.
         if let Some(account) = rpc_client
             .get_account_with_commitment(&buffer_pubkey, config.commitment)?
