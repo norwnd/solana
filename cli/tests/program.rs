@@ -82,11 +82,6 @@ fn test_cli_program_deploy_non_upgradeable() {
         is_final: true,
         max_len: None,
         skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: Default::default(),
-        min_rent_balance: None,
     });
     config.output_format = OutputFormat::JsonCompact;
     let response = process_command(&config);
@@ -130,11 +125,6 @@ fn test_cli_program_deploy_non_upgradeable() {
         is_final: true,
         max_len: None,
         skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: Default::default(),
-        min_rent_balance: None,
     });
     process_command(&config).unwrap();
     let account1 = rpc_client
@@ -188,11 +178,6 @@ fn test_cli_program_deploy_non_upgradeable() {
         is_final: true,
         max_len: None,
         skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: Default::default(),
-        min_rent_balance: None,
     });
     let err = process_command(&config).unwrap_err();
     assert_eq!(
@@ -214,11 +199,6 @@ fn test_cli_program_deploy_non_upgradeable() {
         is_final: true,
         max_len: None,
         skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: Default::default(),
-        min_rent_balance: None,
     });
     process_command(&config).unwrap_err();
 }
@@ -278,11 +258,6 @@ fn test_cli_program_deploy_no_authority() {
         is_final: true,
         max_len: None,
         skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: Default::default(),
-        min_rent_balance: None,
     });
     config.output_format = OutputFormat::JsonCompact;
     let response = process_command(&config);
@@ -309,11 +284,6 @@ fn test_cli_program_deploy_no_authority() {
         is_final: false,
         max_len: None,
         skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: Default::default(),
-        min_rent_balance: None,
     });
     process_command(&config).unwrap_err();
 }
@@ -374,11 +344,6 @@ fn test_cli_program_deploy_with_authority() {
         is_final: false,
         max_len: Some(max_len),
         skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: Default::default(),
-        min_rent_balance: None,
     });
     config.output_format = OutputFormat::JsonCompact;
     let response = process_command(&config);
@@ -426,11 +391,6 @@ fn test_cli_program_deploy_with_authority() {
         is_final: false,
         max_len: Some(max_len),
         skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: Default::default(),
-        min_rent_balance: None,
     });
     let response = process_command(&config);
     let json: Value = serde_json::from_str(&response.unwrap()).unwrap();
@@ -473,11 +433,6 @@ fn test_cli_program_deploy_with_authority() {
         is_final: false,
         max_len: Some(max_len),
         skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: Default::default(),
-        min_rent_balance: None,
     });
     process_command(&config).unwrap();
     let program_account = rpc_client.get_account(&program_pubkey).unwrap();
@@ -533,11 +488,6 @@ fn test_cli_program_deploy_with_authority() {
         is_final: false,
         max_len: None,
         skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: Default::default(),
-        min_rent_balance: None,
     });
     process_command(&config).unwrap();
     let program_account = rpc_client.get_account(&program_pubkey).unwrap();
@@ -613,11 +563,6 @@ fn test_cli_program_deploy_with_authority() {
         is_final: false,
         max_len: None,
         skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: Default::default(),
-        min_rent_balance: None,
     });
     process_command(&config).unwrap_err();
 
@@ -633,11 +578,6 @@ fn test_cli_program_deploy_with_authority() {
         is_final: true,
         max_len: None,
         skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: Default::default(),
-        min_rent_balance: None,
     });
     let response = process_command(&config);
     let json: Value = serde_json::from_str(&response.unwrap()).unwrap();
@@ -740,11 +680,6 @@ fn test_cli_program_close_program() {
         is_final: false,
         max_len: Some(max_len),
         skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: Default::default(),
-        min_rent_balance: None,
     });
     config.output_format = OutputFormat::JsonCompact;
     process_command(&config).unwrap();
@@ -839,10 +774,9 @@ fn test_cli_program_extend_program() {
     config.signers = vec![&keypair, &upgrade_authority, &program_keypair];
     config.command = CliCommand::Program(ProgramCliCommand::Deploy {
         program_location: Some(noop_path.to_str().unwrap().to_string()),
+        fee_payer_signer_index: 0,
         program_signer_index: Some(2),
-        program_pubkey: Some(program_keypair.pubkey()),
         buffer_signer_index: None,
-        buffer_pubkey: None,
         allow_excessive_balance: false,
         upgrade_authority_signer_index: 1,
         is_final: false,
@@ -1203,11 +1137,6 @@ fn test_cli_program_write_buffer() {
         is_final: true,
         max_len: None,
         skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: Default::default(),
-        min_rent_balance: None,
     });
     config.output_format = OutputFormat::JsonCompact;
     let error = process_command(&config).unwrap_err();
@@ -1407,11 +1336,6 @@ fn test_cli_program_mismatch_buffer_authority() {
         is_final: true,
         max_len: None,
         skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: Default::default(),
-        min_rent_balance: None,
     });
     process_command(&config).unwrap_err();
 
@@ -1428,11 +1352,6 @@ fn test_cli_program_mismatch_buffer_authority() {
         is_final: true,
         max_len: None,
         skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: Default::default(),
-        min_rent_balance: None,
     });
     process_command(&config).unwrap();
 }
@@ -1464,9 +1383,6 @@ fn test_cli_program_deploy_with_offline_signing() {
 
     let blockhash = rpc_client.get_latest_blockhash().unwrap();
 
-    let minimum_balance_for_program = rpc_client
-        .get_minimum_balance_for_rent_exemption(UpgradeableLoaderState::size_of_program())
-        .unwrap();
     let mut file = File::open(noop_large_path.to_str().unwrap()).unwrap();
     let mut large_program_data = Vec::new();
     file.read_to_end(&mut large_program_data).unwrap();
@@ -1508,272 +1424,23 @@ fn test_cli_program_deploy_with_offline_signing() {
     config.signers = vec![&offline_signer];
     process_command(&config).unwrap();
 
-    create_buffer_with_offline_authority(
-        &rpc_client,
-        &noop_path,
-        &mut config,
-        &online_signer,
-        &offline_signer,
-        &buffer_signer,
-        &buffer_signer_identity,
-        minimum_balance_for_program,
-    );
-
-    // Offline sign-only (signature over wrong max_len)
-    config.signers = vec![
-        &offline_signer,
-        &buffer_signer_identity,
-        &program_signer_identity,
-    ];
-    let mut fee_payer_signer_index = 0; // offline signer
-    if !use_offline_signer_as_fee_payer {
-        fee_payer_signer_index = 3; // online signer
-        config.signers.push(&online_signer_identity); // can't (and won't) provide signature, for simplicity
-    }
+    // Deploy upgradeable program with authority set to offline signer
+    config.signers = vec![&online_signer, &offline_signer, &program_signer];
     config.command = CliCommand::Program(ProgramCliCommand::Deploy {
-        program_location: None,
-        fee_payer_signer_index,
+        program_location: Some(noop_path.to_str().unwrap().to_string()),
+        fee_payer_signer_index: 0,
         program_signer_index: Some(2),
-        buffer_signer_index: Some(1),
+        buffer_signer_index: None,
         allow_excessive_balance: false,
-        upgrade_authority_signer_index: 0,
+        upgrade_authority_signer_index: 1, // must be offline signer for security reasons
         is_final: false,
-        max_len: Some(max_program_data_len + 1), // will ensure offline signature applies to wrong(different) message
+        max_len: Some(max_program_data_len), // allows for larger program size with future upgrades
         skip_fee_check: false,
-        sign_only: true,
-        upgrade: Some(false),
-        dump_transaction_message: false,
-        blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
-        min_rent_balance: Some(minimum_balance_for_program),
     });
     config.output_format = OutputFormat::JsonCompact;
-    let output = process_command(&config).unwrap();
-    let offline_pre_signer = fetch_pre_signer(&output, &offline_signer.pubkey().to_string());
+    process_command(&config).unwrap();
 
-    // Attempt to deploy from buffer using signature over wrong(different) message (should fail)
-    config.signers = vec![
-        &offline_pre_signer,
-        &buffer_signer_identity,
-        &program_signer,
-    ];
-    let mut fee_payer_signer_index = 0; // offline signer
-    if !use_offline_signer_as_fee_payer {
-        fee_payer_signer_index = 3; // online signer
-        config.signers.push(&online_signer); // can (and will) provide signature
-    }
-    config.command = CliCommand::Program(ProgramCliCommand::Deploy {
-        program_location: None,
-        fee_payer_signer_index,
-        program_signer_index: Some(2),
-        buffer_signer_index: Some(1),
-        allow_excessive_balance: false,
-        upgrade_authority_signer_index: 0,
-        is_final: false,
-        max_len: Some(max_program_data_len),
-        skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
-        min_rent_balance: Some(minimum_balance_for_program),
-    });
-    config.output_format = OutputFormat::JsonCompact;
-    let error = process_command(&config).unwrap_err();
-    assert_eq!(error.to_string(), "presigner error");
-
-    // Offline sign-only (signature over wrong min_rent_balance)
-    config.signers = vec![
-        &offline_signer,
-        &buffer_signer_identity,
-        &program_signer_identity,
-    ];
-    let mut fee_payer_signer_index = 0; // offline signer
-    if !use_offline_signer_as_fee_payer {
-        fee_payer_signer_index = 3; // online signer
-        config.signers.push(&online_signer_identity); // can't (and won't) provide signature, for simplicity
-    }
-    config.command = CliCommand::Program(ProgramCliCommand::Deploy {
-        program_location: None,
-        fee_payer_signer_index,
-        program_signer_index: Some(2),
-        buffer_signer_index: Some(1),
-        allow_excessive_balance: false,
-        upgrade_authority_signer_index: 0,
-        is_final: false,
-        max_len: Some(max_program_data_len),
-        skip_fee_check: false,
-        sign_only: true,
-        upgrade: Some(false),
-        dump_transaction_message: false,
-        blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
-        min_rent_balance: Some(minimum_balance_for_program + 1), // will ensure offline signature applies to wrong(different) message
-    });
-    config.output_format = OutputFormat::JsonCompact;
-    let output = process_command(&config).unwrap();
-    let offline_pre_signer = fetch_pre_signer(&output, &offline_signer.pubkey().to_string());
-
-    // Attempt to deploy from buffer using signature over wrong(different) message (should fail)
-    config.signers = vec![
-        &offline_pre_signer,
-        &buffer_signer_identity,
-        &program_signer,
-    ];
-    let mut fee_payer_signer_index = 0; // offline signer
-    if !use_offline_signer_as_fee_payer {
-        fee_payer_signer_index = 3; // online signer
-        config.signers.push(&online_signer); // can (and will) provide signature
-    }
-    config.command = CliCommand::Program(ProgramCliCommand::Deploy {
-        program_location: None,
-        fee_payer_signer_index,
-        program_signer_index: Some(2),
-        buffer_signer_index: Some(1),
-        allow_excessive_balance: false,
-        upgrade_authority_signer_index: 0,
-        is_final: false,
-        max_len: Some(max_program_data_len),
-        skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
-        min_rent_balance: Some(minimum_balance_for_program),
-    });
-    config.output_format = OutputFormat::JsonCompact;
-    let error = process_command(&config).unwrap_err();
-    assert_eq!(error.to_string(), "presigner error");
-
-    // Offline sign-only (signature over upgrade when program hasn't even been deployed yet)
-    config.signers = vec![
-        &offline_signer,
-        &buffer_signer_identity,
-        &program_signer_identity,
-    ];
-    let mut fee_payer_signer_index = 0; // offline signer
-    if !use_offline_signer_as_fee_payer {
-        fee_payer_signer_index = 3; // online signer
-        config.signers.push(&online_signer_identity); // can't (and won't) provide signature, for simplicity
-    }
-    config.command = CliCommand::Program(ProgramCliCommand::Deploy {
-        program_location: None,
-        fee_payer_signer_index,
-        program_signer_index: Some(2),
-        buffer_signer_index: Some(1),
-        allow_excessive_balance: false,
-        upgrade_authority_signer_index: 0,
-        is_final: false,
-        max_len: Some(max_program_data_len),
-        skip_fee_check: false,
-        sign_only: true,
-        upgrade: Some(true), // will ensure offline signature applies to wrong(different) message
-        dump_transaction_message: false,
-        blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
-        min_rent_balance: Some(minimum_balance_for_program),
-    });
-    config.output_format = OutputFormat::JsonCompact;
-    let output = process_command(&config).unwrap();
-    let offline_pre_signer = fetch_pre_signer(&output, &offline_signer.pubkey().to_string());
-
-    // Attempt to deploy from buffer using signature over wrong(different) message (should fail)
-    config.signers = vec![
-        &offline_pre_signer,
-        &buffer_signer_identity,
-        &program_signer,
-    ];
-    let mut fee_payer_signer_index = 0; // offline signer
-    if !use_offline_signer_as_fee_payer {
-        fee_payer_signer_index = 3; // online signer
-        config.signers.push(&online_signer); // can (and will) provide signature
-    }
-    config.command = CliCommand::Program(ProgramCliCommand::Deploy {
-        program_location: None,
-        fee_payer_signer_index,
-        program_signer_index: Some(2),
-        buffer_signer_index: Some(1),
-        allow_excessive_balance: false,
-        upgrade_authority_signer_index: 0,
-        is_final: false,
-        max_len: Some(max_program_data_len),
-        skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
-        min_rent_balance: Some(minimum_balance_for_program),
-    });
-    config.output_format = OutputFormat::JsonCompact;
-    let error = process_command(&config).unwrap_err();
-    assert_eq!(error.to_string(), "presigner error");
-
-    // Offline sign-only with online signer as fee payer (correct signature for initial program deploy)
-    config.signers = vec![
-        &offline_signer,
-        &buffer_signer_identity,
-        &program_signer_identity,
-    ];
-    let mut fee_payer_signer_index = 0; // offline signer
-    if !use_offline_signer_as_fee_payer {
-        fee_payer_signer_index = 3; // online signer
-        config.signers.push(&online_signer_identity); // can't (and won't) provide signature, for simplicity
-    }
-    config.command = CliCommand::Program(ProgramCliCommand::Deploy {
-        program_location: None,
-        fee_payer_signer_index,
-        program_signer_index: Some(2),
-        buffer_signer_index: Some(1),
-        allow_excessive_balance: false,
-        upgrade_authority_signer_index: 0,
-        is_final: false,
-        max_len: Some(max_program_data_len),
-        skip_fee_check: false,
-        sign_only: true,
-        upgrade: Some(false),
-        dump_transaction_message: false,
-        blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
-        min_rent_balance: Some(minimum_balance_for_program),
-    });
-    config.output_format = OutputFormat::JsonCompact;
-    let output = process_command(&config).unwrap();
-    let offline_pre_signer = fetch_pre_signer(&output, &offline_signer.pubkey().to_string());
-
-    // Attempt to deploy from buffer using signature over correct message (should succeed)
-    config.signers = vec![
-        &offline_pre_signer,
-        &buffer_signer_identity,
-        &program_signer,
-    ];
-    let mut fee_payer_signer_index = 0; // offline signer
-    if !use_offline_signer_as_fee_payer {
-        fee_payer_signer_index = 3; // online signer
-        config.signers.push(&online_signer); // can (and will) provide signature
-    }
-    config.command = CliCommand::Program(ProgramCliCommand::Deploy {
-        program_location: None,
-        fee_payer_signer_index,
-        program_signer_index: Some(2),
-        buffer_signer_index: Some(1),
-        allow_excessive_balance: false,
-        upgrade_authority_signer_index: 0,
-        is_final: false,
-        max_len: Some(max_program_data_len),
-        skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
-        min_rent_balance: Some(minimum_balance_for_program),
-    });
-    config.output_format = OutputFormat::JsonCompact;
-
-    verify_deployed_program(
-        &rpc_client,
-        &mut config,
-        &online_signer,
-        offline_signer.pubkey(),
-        program_signer.pubkey(),
-        max_program_data_len,
-    );
-
+    // Prepare buffer to upgrade deployed program to a larger program
     create_buffer_with_offline_authority(
         &rpc_client,
         &noop_large_path,
@@ -1782,10 +1449,9 @@ fn test_cli_program_deploy_with_offline_signing() {
         &offline_signer,
         &buffer_signer,
         &buffer_signer_identity,
-        minimum_balance_for_program,
-    ); // prepare buffer to upgrade deployed program (to larger program)
+    );
 
-    // Offline sign-only (signature over initial deploy when program has already been deployed yet)
+    // Offline sign-only with signature over "wrong" message (with different buffer)
     config.signers = vec![
         &offline_signer,
         &buffer_signer_identity,
@@ -1796,26 +1462,21 @@ fn test_cli_program_deploy_with_offline_signing() {
         fee_payer_signer_index = 3; // online signer
         config.signers.push(&online_signer_identity); // can't (and won't) provide signature, for simplicity
     }
-    config.command = CliCommand::Program(ProgramCliCommand::Deploy {
-        program_location: None,
+    config.command = CliCommand::Program(ProgramCliCommand::Upgrade {
         fee_payer_signer_index,
-        program_signer_index: Some(2),
-        buffer_signer_index: Some(1),
-        allow_excessive_balance: false,
+        program_signer_index: 2,
+        buffer_signer_index: 2, // will ensure offline signature applies to wrong(different) message
         upgrade_authority_signer_index: 0,
         is_final: false,
-        max_len: Some(max_program_data_len), // have to specify this here to satisfy `upgrade = false` mode
+        max_len: None,
         skip_fee_check: false,
         sign_only: true,
-        upgrade: Some(false), // will ensure offline signature applies to wrong(different) message
         dump_transaction_message: false,
         blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
-        min_rent_balance: Some(minimum_balance_for_program), // have to specify this here to satisfy `upgrade = false` mode
     });
     config.output_format = OutputFormat::JsonCompact;
     let output = process_command(&config).unwrap();
     let offline_pre_signer = fetch_pre_signer(&output, &offline_signer.pubkey().to_string());
-
     // Attempt to deploy from buffer using signature over wrong(different) message (should fail)
     config.signers = vec![
         &offline_pre_signer,
@@ -1827,21 +1488,17 @@ fn test_cli_program_deploy_with_offline_signing() {
         fee_payer_signer_index = 3; // online signer
         config.signers.push(&online_signer); // can (and will) provide signature
     }
-    config.command = CliCommand::Program(ProgramCliCommand::Deploy {
-        program_location: None,
+    config.command = CliCommand::Program(ProgramCliCommand::Upgrade {
         fee_payer_signer_index,
-        program_signer_index: Some(2),
-        buffer_signer_index: Some(1),
-        allow_excessive_balance: false,
+        program_signer_index: 2,
+        buffer_signer_index: 1,
         upgrade_authority_signer_index: 0,
         is_final: false,
         max_len: None,
         skip_fee_check: false,
         sign_only: false,
-        upgrade: None,
         dump_transaction_message: false,
         blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
-        min_rent_balance: None,
     });
     config.output_format = OutputFormat::JsonCompact;
     let error = process_command(&config).unwrap_err();
@@ -1858,26 +1515,21 @@ fn test_cli_program_deploy_with_offline_signing() {
         fee_payer_signer_index = 3; // online signer
         config.signers.push(&online_signer_identity); // can't (and won't) provide signature, for simplicity
     }
-    config.command = CliCommand::Program(ProgramCliCommand::Deploy {
-        program_location: None,
+    config.command = CliCommand::Program(ProgramCliCommand::Upgrade {
         fee_payer_signer_index,
-        program_signer_index: Some(2),
-        buffer_signer_index: Some(1),
-        allow_excessive_balance: false,
+        program_signer_index: 2,
+        buffer_signer_index: 1,
         upgrade_authority_signer_index: 0,
         is_final: false,
         max_len: None,
         skip_fee_check: false,
         sign_only: true,
-        upgrade: Some(true),
         dump_transaction_message: false,
         blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
-        min_rent_balance: None,
     });
     config.output_format = OutputFormat::JsonCompact;
     let output = process_command(&config).unwrap();
     let offline_pre_signer = fetch_pre_signer(&output, &offline_signer.pubkey().to_string());
-
     // Attempt to deploy from buffer using signature over correct message (should succeed)
     config.signers = vec![
         &offline_pre_signer,
@@ -1889,31 +1541,30 @@ fn test_cli_program_deploy_with_offline_signing() {
         fee_payer_signer_index = 3; // online signer
         config.signers.push(&online_signer); // can (and will) provide signature
     }
-    config.command = CliCommand::Program(ProgramCliCommand::Deploy {
-        program_location: None,
+    config.command = CliCommand::Program(ProgramCliCommand::Upgrade {
         fee_payer_signer_index,
-        program_signer_index: Some(2),
-        buffer_signer_index: Some(1),
-        allow_excessive_balance: false,
+        program_signer_index: 2,
+        buffer_signer_index: 1,
         upgrade_authority_signer_index: 0,
         is_final: false,
         max_len: None,
         skip_fee_check: false,
         sign_only: false,
-        upgrade: None,
         dump_transaction_message: false,
         blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
-        min_rent_balance: None,
     });
     config.output_format = OutputFormat::JsonCompact;
-
+    let min_slot = rpc_client.get_slot().unwrap();
+    process_command(&config).unwrap();
+    let max_slot = rpc_client.get_slot().unwrap();
     verify_deployed_program(
-        &rpc_client,
         &mut config,
         &online_signer,
         offline_signer.pubkey(),
         program_signer.pubkey(),
         max_program_data_len,
+        min_slot,
+        max_slot,
     );
 }
 
@@ -2030,11 +1681,6 @@ fn test_cli_program_show() {
         is_final: false,
         max_len: Some(max_len),
         skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: Default::default(),
-        min_rent_balance: None,
     });
     config.output_format = OutputFormat::JsonCompact;
     let min_slot = rpc_client.get_slot().unwrap();
@@ -2218,7 +1864,6 @@ fn create_buffer_with_offline_authority<'a>(
     offline_signer: &'a Keypair,
     buffer_signer: &'a Keypair,
     buffer_signer_identity: &'a NullSigner,
-    minimum_balance_for_program: u64,
 ) {
     // Write a buffer
     config.signers = vec![online_signer, buffer_signer];
@@ -2279,11 +1924,6 @@ fn create_buffer_with_offline_authority<'a>(
         is_final: false,
         max_len: None,
         skip_fee_check: false,
-        sign_only: false,
-        upgrade: None,
-        dump_transaction_message: false,
-        blockhash_query: BlockhashQuery::default(),
-        min_rent_balance: Some(minimum_balance_for_program),
     });
     config.output_format = OutputFormat::JsonCompact;
     let error = process_command(config).unwrap_err();
@@ -2291,17 +1931,14 @@ fn create_buffer_with_offline_authority<'a>(
 }
 
 fn verify_deployed_program<'a>(
-    rpc_client: &RpcClient,
     config: &mut CliConfig<'a>,
     online_signer: &'a Keypair,
     offline_signer_pub_key: Pubkey,
     program_signer_pub_key: Pubkey,
     max_program_data_len: usize,
+    min_slot: u64,
+    max_slot: u64,
 ) {
-    let min_slot = rpc_client.get_slot().unwrap();
-    process_command(config).unwrap();
-    let max_slot = rpc_client.get_slot().unwrap();
-
     // Verify show
     config.signers = vec![online_signer];
     config.command = CliCommand::Program(ProgramCliCommand::Show {
