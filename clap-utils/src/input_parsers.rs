@@ -135,9 +135,9 @@ pub fn signer_of(
     }
 }
 
-// Return a signer from matches at `name` (returns NullSigner and doesn't error).
+// Return a signer from matches at `name` (returns NullSigner if no "real" signer can be extracted from matches arg).
 #[allow(clippy::type_complexity)]
-pub fn signer_of_allow_null_signer(
+pub fn signer_of_or_null_signer(
     matches: &ArgMatches<'_>,
     name: &str,
     wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
