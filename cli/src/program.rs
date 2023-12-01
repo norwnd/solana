@@ -1357,10 +1357,6 @@ fn process_program_upgrade(
     );
 
     if sign_only {
-        // TODO
-        let final_msg = final_message.serialize();
-        println!("(offline) final tx: {:?}", final_msg);
-
         let mut tx = Transaction::new_unsigned(final_message);
         let signers = &[fee_payer_signer, upgrade_authority_signer];
         // Using try_partial_sign here because fee_payer_signer might not be the fee payer we
@@ -1374,10 +1370,6 @@ fn process_program_upgrade(
             },
         )
     } else {
-        // TODO
-        let final_msg = final_message.serialize();
-        println!("(online) final tx: {:?}", final_msg);
-
         let final_message = Some(final_message);
 
         let program_len = {
