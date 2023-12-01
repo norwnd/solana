@@ -238,15 +238,19 @@ fn run_transactions_dos(
         config.signers = vec![payer_keypairs[0], &program_keypair];
         config.command = CliCommand::Program(ProgramCliCommand::Deploy {
             program_location: Some(program_location),
+            fee_payer_signer_index: 0,
             program_signer_index: Some(1),
-            program_pubkey: None,
             buffer_signer_index: None,
-            buffer_pubkey: None,
             allow_excessive_balance: true,
             upgrade_authority_signer_index: 0,
             is_final: true,
             max_len: None,
             skip_fee_check: true, // skip_fee_check
+            sign_only: false,
+            upgrade: None,
+            dump_transaction_message: false,
+            blockhash_query: Default::default(),
+            min_rent_balance: None,
         });
 
         process_command(&config).expect("deploy didn't pass");
