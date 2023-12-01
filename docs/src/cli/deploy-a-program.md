@@ -318,17 +318,17 @@ Buffers also support `show` and `dump` just like programs do.
 Storing private key(s) on machine without internet access (offline signer) is much safer compared to
 storing them on machine with internet access (online signer), this section describes how program developer
 can use offline machine (offline signer) to sign-off on his program `upgrade` to get a **higher degree of
-security** (compared to typical upgrade flow described in [this section](deploy-a-program.md#redeploy-a-program), 
+security** (compared to typical upgrade flow described in [this section](deploy-a-program.md#redeploy-a-program)
 which assumes the usage of machine connected to internet - aka online signer). Note, currently only `upgrade`
 operation can be performed in "offline" mode, initial program `deploy` **must** be performed using online machine
 and only subsequent program upgrades can leverage offline signing. For a first time deploy it is **recommended** 
 to [change program's upgrade authority (using `--skip-new-upgrade-authority-signer-check` option)](deploy-a-program.md#set-a-programs-upgrade-authority)
-to offline signer, so that future program upgrades will only be possible via signature by private key residing on 
-offline machine (see how it's done below).
+to offline signer, so that future program upgrades will only be possible with a signature of private key residing on 
+offline machine.
 
 Assuming your program has been deployed (using online machine) and its upgrade authority has been changed to
-offline signer - authority's private key generated and stays on machine **disconnected** from internet. 
-A typical setup would consist of 3 different signers (pairs of keys):
+offline signer (a signer whose private key is generated and stays on machine **disconnected** from internet), 
+a typical setup would consist of 3 different signers (pairs of keys):
 - online signer (used as fee payer for deploying program buffer, deploying/upgrading program itself)
 - offline signer (serves as authority over program upgrades, protects program upgrades from certain 
   types of attacks), make sure to have a **secure** backup of this signer
@@ -354,8 +354,8 @@ solana program set-buffer-authority <ONLINE_SIGNER_PUB_KEY> --new-buffer-authori
   up as buffer authority when running `solana program write-buffer` command using online machine (offline signer 
   private key is stored on offline machine), and `solana program set-buffer-authority` doesn't impose that requirement.
 
-(3) This is where you'd want to verify the program (or program buffer) uploaded to buffer indeed matches source code,
-the most secure way to do it would be to compile program source code on a different online machine (not the same
+(3) This is where you'd want to verify that program uploaded to your buffer indeed matches source code.
+The most secure way to do it would be to compile program source code on a different online machine (not the same
 online machine that deploys your program, because it could be compromised) and compare resulting `.so` file with
 program data residing on-chain. See how you can [dump on-chain program into a file](deploy-a-program.md#dumping-a-program-to-a-file)
 to verify it.
@@ -372,8 +372,9 @@ solana program upgrade --fee-payer <ONLINE_SIGNER> --program-id <PROGRAM_SIGNER_
 ```
 Note:
 - typically, the output of the previous command(s) will contain some values useful in subsequent commands, e.g. 
-  `--buffer`, (and you need to specify proper values for some params in `--sign-only` mode because on offline machine 
-  there is no way to query values online)
+  `--program-id`, `--buffer`, `--signer`
+- you need to specify matching (or corresponding) values for params with same names (`--fee-payer`, `--program-id`, 
+  `--upgrade-authority`, `--buffer`, `--blockhash`) in offline/online modes
 - you should pre-fill every value except for `blockhash` ahead of time, and once you are ready to act - you'll need to 
   look up fresh `blockhash` and paste it in quickly + do your signing, you have ~60 seconds before `blockhash` expires. 
   If you didn't make it in time - just get another fresh hash and repeat until you succeed, or consider using 
