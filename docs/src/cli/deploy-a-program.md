@@ -316,9 +316,13 @@ to [change program's upgrade authority](deploy-a-program.md#set-a-programs-upgra
 so that future program upgrades will only be possible via signature by private key residing on offline machine
 (see how it's done below).
 
-We assume that program has been deployed (using online machine) and it's upgrade authority has been changed to
-offline signer (private key generated and stays on machine disconnected from internet), a typical setup would  
-consist of 3 different pairs of keys:
+Assume that program has been deployed (using online machine) and it's upgrade authority has been changed to
+offline signer - authority's private key generated and stays on machine **disconnected** from internet (note, 
+use `--skip-new-upgrade-authority-signer-check` when upgrading authority to offline signer because you'll be 
+upgrading using online machine that doesn't have access to "new upgrade authority signer private key" since 
+it's offline, it's checked to be present for extra safety - ensuring that you don't accidentally specify 
+"new authority" that you don't have control over). 
+A typical setup would consist of 3 different pairs of keys:
 - online signer (used as fee payer for deploying program buffer, deploying/upgrading program itself)
 - offline signer (serves as authority over program upgrades, protects program upgrades from certain 
   types of attacks), make sure to have a **secure** backup of this signer
