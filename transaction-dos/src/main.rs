@@ -246,11 +246,6 @@ fn run_transactions_dos(
             is_final: true,
             max_len: None,
             skip_fee_check: true, // skip_fee_check
-            sign_only: false,
-            upgrade: None,
-            dump_transaction_message: false,
-            blockhash_query: Default::default(),
-            min_rent_balance: None,
         });
 
         process_command(&config).expect("deploy didn't pass");
