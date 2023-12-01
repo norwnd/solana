@@ -1401,7 +1401,7 @@ fn test_cli_program_deploy_with_offline_signing() {
     let offline_signer = Keypair::new();
     let buffer_signer = Keypair::new();
     let buffer_signer_identity = NullSigner::new(&buffer_signer.pubkey());
-    // For simplicity, keypair for program signer should be different from online signer or
+    // Typically, keypair for program signer should be different from online signer or
     // offline signer keypairs.
     let program_signer = Keypair::new();
     let program_signer_identity = NullSigner::new(&program_signer.pubkey());

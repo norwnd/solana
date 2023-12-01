@@ -193,14 +193,6 @@ impl ProgramSubCommands for App<'_, '_> {
                                 .help("Upgrade authority [default: the default configured keypair]")
                         )
                         .arg(
-                            Arg::with_name("program")
-                                .long("program")
-                                .value_name("PROGRAM_SIGNER")
-                                .takes_value(true)
-                                .validator(is_valid_signer)
-                                .help("Program account signer. The program data is written to the associated account.")
-                        )
-                        .arg(
                             pubkey!(Arg::with_name("program_id")
                                 .long("program-id")
                                 .value_name("PROGRAM_ID"),
@@ -253,27 +245,12 @@ impl ProgramSubCommands for App<'_, '_> {
                             pubkey!(Arg::with_name("program_id")
                                 .long("program-id")
                                 .value_name("PROGRAM_ID"),
-                                "Executable program's address (pubkey for upgrades)"),
+                                "Executable program's address (pubkey)"),
                         )
                         .arg(
                             Arg::with_name("final")
                                 .long("final")
                                 .help("The program will not be upgradeable")
-                        )
-                        .arg(
-                            Arg::with_name("max_len")
-                                .long("max-len")
-                                .value_name("max_len")
-                                .takes_value(true)
-                                .required(false)
-                                .help("Maximum length of the upgradeable program \
-                                      [default: twice the length of the original deployed program]")
-                        )
-                        .arg(
-                            Arg::with_name("allow_excessive_balance")
-                                .long("allow-excessive-deploy-account-balance")
-                                .takes_value(false)
-                                .help("Use the designated program id even if the account already holds a large balance of SOL")
                         )
                         .arg(fee_payer_arg())
                         .offline_args(),
@@ -563,7 +540,7 @@ pub fn parse_program_subcommand(
                 .map(|location| location.to_string());
 
             let buffer_pubkey = if let Ok((buffer_signer, Some(buffer_pubkey))) =
-                signer_of_allow_null_signer(matches, "buffer", wallet_manager)
+                signer_of_or_null_signer(matches, "buffer", wallet_manager)
             {
                 bulk_signers.push(buffer_signer);
                 Some(buffer_pubkey)
@@ -575,25 +552,14 @@ pub fn parse_program_subcommand(
                 signer_of(matches, "upgrade_authority", wallet_manager)?;
             bulk_signers.push(upgrade_authority);
 
-            let mut program_pubkey = if let Ok((program_signer, Some(program_pubkey))) =
-                signer_of_allow_null_signer(matches, "program", wallet_manager)
+            let program_pubkey = if let Ok((program_signer, Some(program_pubkey))) =
+                signer_of_or_null_signer(matches, "program_id", wallet_manager)
             {
                 bulk_signers.push(program_signer);
                 Some(program_pubkey)
             } else {
                 None // we'll have to generate it ourselves
             };
-            if program_pubkey.is_none() {
-                // Fall back to `--program-id` parameter then, for backward-compatibility.
-                program_pubkey = if let Ok((program_signer, Some(program_pubkey))) =
-                    signer_of_allow_null_signer(matches, "program_id", wallet_manager)
-                {
-                    bulk_signers.push(program_signer);
-                    Some(program_pubkey)
-                } else {
-                    None // we'll have to generate it ourselves
-                };
-            }
 
             let signer_info =
                 default_signer.generate_unique_signers(bulk_signers, matches, wallet_manager)?;
@@ -604,9 +570,7 @@ pub fn parse_program_subcommand(
                     fee_payer_signer_index: signer_info.index_of(Some(fee_payer_pubkey)).unwrap(),
                     program_signer_index: signer_info.index_of_or_none(program_pubkey),
                     buffer_signer_index: signer_info.index_of_or_none(buffer_pubkey),
-                    upgrade_authority_signer_index: signer_info
-                        .index_of(upgrade_authority_pubkey)
-                        .unwrap(),
+                    upgrade_authority_signer_index: signer_info.index_of(upgrade_authority_pubkey).unwrap(),
                     is_final: matches.is_present("final"),
                     max_len,
                     allow_excessive_balance: matches.is_present("allow_excessive_balance"),
@@ -634,37 +598,26 @@ pub fn parse_program_subcommand(
             };
 
             let buffer_pubkey = if let Ok((buffer_signer, Some(buffer_pubkey))) =
-                signer_of_allow_null_signer(matches, "buffer", wallet_manager)
+                signer_of_or_null_signer(matches, "buffer", wallet_manager)
             {
                 bulk_signers.push(buffer_signer);
                 Some(buffer_pubkey)
             } else {
-                None // we'll have to generate it ourselves
+                return Err("`--buffer` must be specified when doing program upgrade".into());
             };
 
             let (upgrade_authority, upgrade_authority_pubkey) =
                 signer_of(matches, "upgrade_authority", wallet_manager)?;
             bulk_signers.push(upgrade_authority);
 
-            let mut program_pubkey = if let Ok((program_signer, Some(program_pubkey))) =
-                signer_of_allow_null_signer(matches, "program", wallet_manager)
+            let program_pubkey = if let Ok((program_signer, Some(program_pubkey))) =
+                signer_of_or_null_signer(matches, "program_id", wallet_manager)
             {
                 bulk_signers.push(program_signer);
                 Some(program_pubkey)
             } else {
-                None // we'll have to generate it ourselves
+                return Err("`--program_id` must be specified when doing program upgrade".into());
             };
-            if program_pubkey.is_none() {
-                // Fall back to `--program-id` parameter then, for backward-compatibility.
-                program_pubkey = if let Ok((program_signer, Some(program_pubkey))) =
-                    signer_of_allow_null_signer(matches, "program_id", wallet_manager)
-                {
-                    bulk_signers.push(program_signer);
-                    Some(program_pubkey)
-                } else {
-                    None // we'll have to generate it ourselves
-                };
-            }
 
             let signer_info =
                 default_signer.generate_unique_signers(bulk_signers, matches, wallet_manager)?;
