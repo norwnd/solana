@@ -570,7 +570,9 @@ pub fn parse_program_subcommand(
                     fee_payer_signer_index: signer_info.index_of(Some(fee_payer_pubkey)).unwrap(),
                     program_signer_index: signer_info.index_of_or_none(program_pubkey),
                     buffer_signer_index: signer_info.index_of_or_none(buffer_pubkey),
-                    upgrade_authority_signer_index: signer_info.index_of(upgrade_authority_pubkey).unwrap(),
+                    upgrade_authority_signer_index: signer_info
+                        .index_of(upgrade_authority_pubkey)
+                        .unwrap(),
                     is_final: matches.is_present("final"),
                     max_len,
                     allow_excessive_balance: matches.is_present("allow_excessive_balance"),
@@ -2336,8 +2338,6 @@ fn do_process_program_write_and_deploy(
     } else {
         let buffer = CliProgramBuffer {
             buffer: buffer_pubkey.to_string(),
-            program_data_max_len,
-            min_rent_exempt_program_balance,
         };
         Ok(config.output_format.formatted_string(&buffer))
     }

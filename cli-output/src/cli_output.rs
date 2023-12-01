@@ -2090,8 +2090,6 @@ impl fmt::Display for CliProgramId {
 #[serde(rename_all = "camelCase")]
 pub struct CliProgramBuffer {
     pub buffer: String,
-    pub program_data_max_len: usize,
-    pub min_rent_exempt_program_balance: u64,
 }
 
 impl QuietDisplay for CliProgramBuffer {}
