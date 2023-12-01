@@ -18,13 +18,13 @@ use {
         input_parsers::*,
         input_validators::*,
         keypair::*,
-        offline::{OfflineArgs, DUMP_TRANSACTION_MESSAGE, SIGN_ONLY_ARG},
+        offline::{OfflineArgs, SIGN_ONLY_ARG},
     },
     solana_cli_output::{
-        return_signers_with_config, ReturnSignersConfig,
-        CliProgram, CliProgramAccountType, CliProgramAuthority, CliProgramBuffer, CliProgramId,
-        CliUpgradeableBuffer, CliUpgradeableBuffers, CliUpgradeableProgram,
-        CliUpgradeableProgramClosed, CliUpgradeableProgramExtended, CliUpgradeablePrograms,
+        return_signers_with_config, CliProgram, CliProgramAccountType, CliProgramAuthority,
+        CliProgramBuffer, CliProgramId, CliUpgradeableBuffer, CliUpgradeableBuffers,
+        CliUpgradeableProgram, CliUpgradeableProgramClosed, CliUpgradeableProgramExtended,
+        CliUpgradeablePrograms, ReturnSignersConfig,
     },
     solana_client::{
         connection_cache::ConnectionCache,
@@ -42,7 +42,7 @@ use {
         config::{RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig},
         filter::{Memcmp, RpcFilterType},
     },
-    solana_rpc_client_nonce_utils::{blockhash_query::BlockhashQuery},
+    solana_rpc_client_nonce_utils::{blockhash_query, blockhash_query::BlockhashQuery},
     solana_sdk::{
         account::Account,
         account_utils::StateMut,
@@ -70,7 +70,6 @@ use {
         sync::Arc,
     },
 };
-use solana_rpc_client_nonce_utils::blockhash_query;
 
 pub const CLOSE_PROGRAM_WARNING: &str = "WARNING! \
 Closed programs cannot be recreated at the same program id. \
@@ -96,10 +95,8 @@ pub enum ProgramCliCommand {
         buffer_signer_index: SignerIndex,
         upgrade_authority_signer_index: SignerIndex,
         is_final: bool,
-        max_len: Option<usize>,
         skip_fee_check: bool,
         sign_only: bool,
-        dump_transaction_message: bool,
         blockhash_query: BlockhashQuery,
     },
     WriteBuffer {
@@ -233,15 +230,8 @@ impl ProgramSubCommands for App<'_, '_> {
                         .arg(fee_payer_arg()),
                 )
                 .subcommand(
-                    SubCommand::with_name("deploy")
+                    SubCommand::with_name("upgrade")
                         .about("Upgrade an upgradeable program")
-                        .arg(
-                            Arg::with_name("program_location")
-                                .index(1)
-                                .value_name("PROGRAM_FILEPATH")
-                                .takes_value(true)
-                                .help("/path/to/program.so"),
-                        )
                         .arg(
                             Arg::with_name("buffer")
                                 .long("buffer")
@@ -260,19 +250,10 @@ impl ProgramSubCommands for App<'_, '_> {
                                 .help("Upgrade authority [default: the default configured keypair]")
                         )
                         .arg(
-                            Arg::with_name("program")
-                                .long("program")
-                                .value_name("PROGRAM_SIGNER")
-                                .takes_value(true)
-                                .validator(is_valid_signer)
-                                .help("Program account signer. The program data is written to the associated account.")
-                        )
-                        .arg(
                             pubkey!(Arg::with_name("program_id")
                                 .long("program-id")
                                 .value_name("PROGRAM_ID"),
-                                "Executable program's address, must be a keypair for initial deploys, can be a pubkey for upgrades \
-                                [default: address of keypair at /path/to/program-keypair.json if present, otherwise a random address]"),
+                                "Executable program's address (pubkey for upgrades)"),
                         )
                         .arg(
                             Arg::with_name("final")
@@ -636,9 +617,7 @@ pub fn parse_program_subcommand(
         }
         ("upgrade", Some(matches)) => {
             let sign_only = matches.is_present(SIGN_ONLY_ARG.name);
-            let dump_transaction_message = matches.is_present(DUMP_TRANSACTION_MESSAGE.name);
             let blockhash_query = BlockhashQuery::new_from_matches(matches);
-            let max_len = value_of(matches, "max_len");
 
             let mut bulk_signers = vec![];
 
@@ -699,10 +678,8 @@ pub fn parse_program_subcommand(
                         .index_of(upgrade_authority_pubkey)
                         .unwrap(),
                     is_final: matches.is_present("final"),
-                    max_len,
                     skip_fee_check,
                     sign_only,
-                    dump_transaction_message,
                     blockhash_query,
                 }),
                 signers: signer_info.signers,
@@ -961,10 +938,8 @@ pub fn process_program_subcommand(
             buffer_signer_index,
             upgrade_authority_signer_index,
             is_final,
-            max_len,
             skip_fee_check,
             sign_only,
-            dump_transaction_message,
             blockhash_query,
         } => process_program_upgrade(
             rpc_client,
@@ -974,10 +949,8 @@ pub fn process_program_subcommand(
             *buffer_signer_index,
             *upgrade_authority_signer_index,
             *is_final,
-            *max_len,
             *skip_fee_check,
             *sign_only,
-            *dump_transaction_message,
             blockhash_query,
         ),
         ProgramCliCommand::WriteBuffer {
@@ -1098,7 +1071,7 @@ fn get_default_program_keypair(program_location: &Option<String>) -> Keypair {
     program_keypair
 }
 
-/// Deploy using upgradeable loader. It also can process program upgrades for
+/// Deploy program using upgradeable loader. It also can process program upgrades for
 /// backward-compatibility purposes, but otherwise - process_program_upgrade should
 /// be used for program upgrades instead.
 #[allow(clippy::too_many_arguments)]
@@ -1118,7 +1091,7 @@ fn process_program_deploy(
     let fee_payer_signer = config.signers[fee_payer_signer_index];
     let upgrade_authority_signer = config.signers[upgrade_authority_signer_index];
 
-    let (words, mnemonic, buffer_keypair) = create_ephemeral_keypair()?;
+    let (buffer_words, buffer_mnemonic, buffer_keypair) = create_ephemeral_keypair()?;
     let (buffer_provided, buffer_signer, buffer_pubkey) = if let Some(i) = buffer_signer_index {
         (true, Some(config.signers[i]), config.signers[i].pubkey())
     } else {
@@ -1203,7 +1176,7 @@ fn process_program_deploy(
         let program_len = program_data.len();
         (program_data, program_len)
     } else if buffer_provided {
-        // Check supplied buffer account.
+        // Check supplied buffer account
         if let Some(account) = rpc_client
             .get_account_with_commitment(&buffer_pubkey, config.commitment)?
             .value
@@ -1258,7 +1231,10 @@ fn process_program_deploy(
 
     let program_data_max_len = if let Some(len) = max_len {
         if program_len > len {
-            return Err("Max length specified not large enough".into());
+            return Err(
+                "Max length specified not large enough to accommodate program/buffer specified"
+                    .into(),
+            );
         }
         len
     } else if is_final {
@@ -1319,7 +1295,9 @@ fn process_program_deploy(
         )?;
     }
     if result.is_err() && !buffer_provided {
-        report_ephemeral_mnemonic(words, mnemonic);
+        // We might have deployed "temporary" buffer but failed to deploy our program from this
+        // buffer, reporting this to the user - so he can retry deploying re-using same buffer.
+        report_ephemeral_mnemonic(buffer_words, buffer_mnemonic);
     }
     result
 }
@@ -1333,10 +1311,8 @@ fn process_program_upgrade(
     buffer_signer_index: SignerIndex,
     upgrade_authority_signer_index: SignerIndex,
     is_final: bool,
-    max_len: Option<usize>,
     skip_fee_check: bool,
     sign_only: bool,
-    dump_transaction_message: bool,
     blockhash_query: &BlockhashQuery,
 ) -> ProcessResult {
     let fee_payer_signer = config.signers[fee_payer_signer_index];
@@ -1366,13 +1342,13 @@ fn process_program_upgrade(
             &tx,
             &config.output_format,
             &ReturnSignersConfig {
-                dump_transaction_message,
+                dump_transaction_message: true, // print out resulting signature
             },
         )
     } else {
         let final_message = Some(final_message);
 
-        let program_len = {
+        let buffer_len = {
             // Check supplied buffer account.
             if let Some(account) = rpc_client
                 .get_account_with_commitment(&buffer_pubkey, config.commitment)?
@@ -1381,7 +1357,8 @@ fn process_program_upgrade(
                 if !bpf_loader_upgradeable::check_id(&account.owner) {
                     return Err(format!(
                         "Buffer account {buffer_pubkey} is not owned by the BPF Upgradeable Loader",
-                    ).into());
+                    )
+                    .into());
                 }
 
                 match account.state() {
@@ -1389,46 +1366,46 @@ fn process_program_upgrade(
                         // continue if buffer is initialized
                     }
                     Ok(UpgradeableLoaderState::Program { .. }) => {
-                        return Err(
-                            format!("Cannot use program account {buffer_pubkey} as buffer").into(),
-                        );
+                        return Err(format!(
+                            "Cannot use program account {buffer_pubkey} as buffer"
+                        )
+                        .into());
                     }
                     Ok(UpgradeableLoaderState::ProgramData { .. }) => {
                         return Err(format!(
                             "Cannot use program data account {buffer_pubkey} as buffer",
-                        ).into())
+                        )
+                        .into())
                     }
                     Ok(UpgradeableLoaderState::Uninitialized) => {
-                        return Err(format!("Buffer account {buffer_pubkey} is not initialized").into());
+                        return Err(
+                            format!("Buffer account {buffer_pubkey} is not initialized").into()
+                        );
                     }
                     Err(_) => {
-                        return Err(
-                            format!("Buffer account {buffer_pubkey} could not be deserialized").into(),
+                        return Err(format!(
+                            "Buffer account {buffer_pubkey} could not be deserialized"
                         )
+                        .into())
                     }
                 };
 
-                account.data.len().saturating_sub(UpgradeableLoaderState::size_of_buffer_metadata())
+                account
+                    .data
+                    .len()
+                    .saturating_sub(UpgradeableLoaderState::size_of_buffer_metadata())
             } else {
                 return Err(format!(
                     "Buffer account {buffer_pubkey} not found, was it already consumed?",
-                ).into());
+                )
+                .into());
             }
         };
 
-        let program_data_max_len = if let Some(len) = max_len {
-            if program_len > len {
-                return Err("Max length specified not large enough".into());
-            }
-            len
-        } else if is_final {
-            program_len
-        } else {
-            program_len * 2
-        };
-        let min_rent_exempt_program_data_balance = rpc_client.get_minimum_balance_for_rent_exemption(
-            UpgradeableLoaderState::size_of_programdata(program_data_max_len),
-        )?;
+        let min_rent_exempt_program_data_balance = rpc_client
+            .get_minimum_balance_for_rent_exemption(UpgradeableLoaderState::size_of_programdata(
+                buffer_len,
+            ))?;
         if !skip_fee_check {
             check_payer(
                 &rpc_client,
@@ -2337,11 +2314,7 @@ fn do_process_program_write_and_deploy(
         } else {
             loader_instruction::write(buffer_pubkey, loader_id, offset, bytes)
         };
-        Message::new_with_blockhash(
-            &[instruction],
-            Some(&fee_payer_signer.pubkey()),
-            &blockhash,
-        )
+        Message::new_with_blockhash(&[instruction], Some(&fee_payer_signer.pubkey()), &blockhash)
     };
 
     let mut write_messages = vec![];
@@ -2435,7 +2408,7 @@ fn do_process_program_upgrade(
 
     let (initial_message, write_messages, balance_needed) =
         if let Some(buffer_signer) = buffer_signer {
-            // Check Buffer account to see if partial initialization has occurred.
+            // Check Buffer account to see if partial initialization has occurred
             let (initial_instructions, balance_needed) = if let Some(account) = rpc_client
                 .get_account_with_commitment(&buffer_signer.pubkey(), config.commitment)?
                 .value
@@ -2472,7 +2445,7 @@ fn do_process_program_upgrade(
                 None
             };
 
-            // Create and add write messages
+            // Create write messages
             let buffer_signer_pubkey = buffer_signer.pubkey();
             let upgrade_authority_pubkey = upgrade_authority.pubkey();
             let create_msg = |offset: u32, bytes: Vec<u8>| {
@@ -2493,13 +2466,12 @@ fn do_process_program_upgrade(
             for (chunk, i) in program_data.chunks(chunk_size).zip(0..) {
                 write_messages.push(create_msg((i * chunk_size) as u32, chunk.to_vec()));
             }
-
             (initial_message, write_messages, balance_needed)
         } else {
             (None, vec![], 0)
         };
 
-    // Create and add final message.
+    // Create and add final message
     let final_message = Message::new_with_blockhash(
         &[bpf_loader_upgradeable::upgrade(
             program_pubkey,

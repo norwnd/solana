@@ -1468,10 +1468,8 @@ fn test_cli_program_deploy_with_offline_signing() {
         buffer_signer_index: 2, // will ensure offline signature applies to wrong(different) message
         upgrade_authority_signer_index: 0,
         is_final: false,
-        max_len: None,
         skip_fee_check: false,
         sign_only: true,
-        dump_transaction_message: false,
         blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
     });
     config.output_format = OutputFormat::JsonCompact;
@@ -1494,10 +1492,8 @@ fn test_cli_program_deploy_with_offline_signing() {
         buffer_signer_index: 1,
         upgrade_authority_signer_index: 0,
         is_final: false,
-        max_len: None,
         skip_fee_check: false,
         sign_only: false,
-        dump_transaction_message: false,
         blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
     });
     config.output_format = OutputFormat::JsonCompact;
@@ -1521,10 +1517,8 @@ fn test_cli_program_deploy_with_offline_signing() {
         buffer_signer_index: 1,
         upgrade_authority_signer_index: 0,
         is_final: false,
-        max_len: None,
         skip_fee_check: false,
         sign_only: true,
-        dump_transaction_message: false,
         blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
     });
     config.output_format = OutputFormat::JsonCompact;
@@ -1547,10 +1541,8 @@ fn test_cli_program_deploy_with_offline_signing() {
         buffer_signer_index: 1,
         upgrade_authority_signer_index: 0,
         is_final: false,
-        max_len: None,
         skip_fee_check: false,
         sign_only: false,
-        dump_transaction_message: false,
         blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
     });
     config.output_format = OutputFormat::JsonCompact;
