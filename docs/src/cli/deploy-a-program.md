@@ -355,10 +355,10 @@ ready to sign program deploy (to upgrade existing program), fill in all required
 
 ```bash
 # or (4) (use offline machine) get a signature for your intent to upgrade program
-solana program upgrade --sign-only --fee-payer <ONLINE_SIGNER_PUB_KEY> --program_id <PROGRAM_SIGNER_PUB_KEY> --upgrade-authority <OFFLINE_SIGNER> --buffer <BUFFER_PUB_KEY> --blockhash <VALUE>
+solana program upgrade --sign-only --fee-payer <ONLINE_SIGNER_PUB_KEY> --program-id <PROGRAM_SIGNER_PUB_KEY> --upgrade-authority <OFFLINE_SIGNER> --buffer <BUFFER_PUB_KEY> --blockhash <VALUE>
 
 # or (5) (use online machine) use this signature to build and broadcast upgrade transactions on-chain
-solana program upgrade --fee-payer <ONLINE_SIGNER> --program_id <PROGRAM_SIGNER_PUB_KEY> --upgrade-authority <OFFLINE_SIGNER_PUB_KEY> --buffer <BUFFER_PUB_KEY> --blockhash <VALUE> --signer <OFFLINE_SIGNER_SIGNATURE>
+solana program upgrade --fee-payer <ONLINE_SIGNER> --program-id <PROGRAM_SIGNER_PUB_KEY> --upgrade-authority <OFFLINE_SIGNER_PUB_KEY> --buffer <BUFFER_PUB_KEY> --blockhash <VALUE> --signer <OFFLINE_SIGNER_SIGNATURE>
 ```
 Note:
 - typically, the output of the previous command(s) will contain some values useful in subsequent commands, e.g. 
