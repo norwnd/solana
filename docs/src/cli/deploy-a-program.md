@@ -232,11 +232,11 @@ Or after deployment and specifying the current authority:
 solana program set-upgrade-authority <PROGRAM_ADDRESS> --upgrade-authority <UPGRADE_AUTHORITY_SIGNER> --new-upgrade-authority <NEW_UPGRADE_AUTHORITY>
 ```
 
-In case you want to set "new upgrade authority" to a signer that you only have pubkey of (when you don't have access
-to its private key) - which is useful for things like [upgrading program using offline signer as authority](deploy-a-program.md#upgrading-program-using-offline-signer-as-authority)
-- you need to use `--skip-new-upgrade-authority-signer-check` option to inform `solana program set-upgrade-authority`
-of your intentions (because otherwise it assumes you have access to that singer's private key and checks for that,
-to ensure you don't accidentally supply "new upgrade authority" you don't have control over):
+In case you want to set "new upgrade authority" to a signer that you only have a pubkey of (meaning, you don't have access
+to its private key) - which is useful for things like [upgrading program using offline signer as authority](deploy-a-program.md#upgrading-program-using-offline-signer-as-authority) -
+you need to use `--skip-new-upgrade-authority-signer-check` option to inform `solana program set-upgrade-authority`
+command of your intentions (because otherwise it assumes you have access to that singer's private key and checks for 
+that, to ensure you don't accidentally supply "new upgrade authority" you don't have control over):
 
 ```bash
 solana program set-upgrade-authority <PROGRAM_ADDRESS> --new-upgrade-authority <NEW_UPGRADE_AUTHORITY> --skip-new-upgrade-authority-signer-check
