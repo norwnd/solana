@@ -318,13 +318,13 @@ security** (compared to typical upgrade flow described in [this section](deploy-
 which assumes the usage of machine connected to internet - aka online signer). Note, currently only `upgrade`
 operation can be performed in "offline" mode, initial program `deploy` **must** be performed using online machine
 and only subsequent program upgrades can leverage offline signing. For a first time deploy it is **recommended** 
-to [change program's upgrade authority using `--skip-new-upgrade-authority-signer-check` option](deploy-a-program.md#set-a-programs-upgrade-authority)
+to [change program's upgrade authority (using `--skip-new-upgrade-authority-signer-check` option)](deploy-a-program.md#set-a-programs-upgrade-authority)
 to offline signer, so that future program upgrades will only be possible via signature by private key residing on 
 offline machine (see how it's done below).
 
-Assume that program has been deployed (using online machine) and it's upgrade authority has been changed to
+Assuming your program has been deployed (using online machine) and its upgrade authority has been changed to
 offline signer - authority's private key generated and stays on machine **disconnected** from internet. 
-A typical setup would consist of 3 different pairs of keys:
+A typical setup would consist of 3 different signers (pairs of keys):
 - online signer (used as fee payer for deploying program buffer, deploying/upgrading program itself)
 - offline signer (serves as authority over program upgrades, protects program upgrades from certain 
   types of attacks), make sure to have a **secure** backup of this signer
