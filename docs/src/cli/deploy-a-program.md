@@ -303,23 +303,33 @@ buffer accounts contents are copied into program accounts and are erased from bl
 
 Buffers also support `show` and `dump` just like programs do.
 
-### Managing (deploying/upgrading) program using offline signer as authority
+### Upgrading program using offline signer as authority
 
 Storing private key(s) on machine without internet access (offline signer) is much safer compared to
-storing them on machine with internet access (online signer), this section describes how to do that.
+storing them on machine with internet access (online signer), this section describes how program developer
+can use offline machine (offline signer) to sign-off on his program `upgrade` to get a **higher degree of
+security** (compared to typical upgrade flow described in [this section](deploy-a-program.md#redeploy-a-program), 
+which assumes the usage of machine connected to internet - aka online signer). Note, currently only `upgrade`
+operation can be performed in "offline" mode, initial program `deploy` **must** be performed using online machine
+and only subsequent program upgrades can leverage offline signing. For a first time deploy it is **recommended** 
+to [change program's upgrade authority](deploy-a-program.md#set-a-programs-upgrade-authority) to offline signer,
+so that future program upgrades will only be possible via signature by private key residing on offline machine
+(see how it's done below).
 
-Below we assume (for simplicity) a setup with 3 different pairs of keys:
+We assume that program has been deployed (using online machine) and it's upgrade authority has been changed to
+offline signer (private key generated and stays on machine disconnected from internet), a typical setup would  
+consist of 3 different pairs of keys:
 - online signer (used as fee payer for deploying program buffer, deploying/upgrading program itself)
-- offline signer (serves as authority over program deploys/upgrades, protects program deploys/upgrades
-  from certain types of attacks)
+- offline signer (serves as authority over program upgrades, protects program upgrades from certain 
+  types of attacks), make sure to have a **secure** backup of this signer
 - program signer (typically, generated when program has been compiled into `.so` file)
 
 The general process is as follows:
 1) (use online machine) create buffer
 2) (use online machine) upgrade buffer authority to offline signer
 3) (optional, use a separate online machine) verify the actual buffer on-chain contents
-4) (use offline machine) get a signature for your intent to create or upgrade program
-5) (use online machine) use this signature to build and broadcast create/upgrade transactions on-chain
+4) (use offline machine) build and copy a signature for your intent to upgrade program
+5) (use online machine) use this signature to build and broadcast upgrade transactions on-chain
 
 ```bash
 # (1) (use online machine) create buffer
@@ -341,24 +351,19 @@ program data residing on-chain. See how you can [dump on-chain program into a fi
 to verify it.
 
 After program buffer has been verified and is believed to contain the compiled result of intended source code - we are 
-ready to sign program deploy (to create brand-new program or upgrade existing one), fill in all required parameters 
-below (<WHATEVER_VALUE> values).
+ready to sign program deploy (to upgrade existing program), fill in all required parameters below (<WHATEVER_VALUE> values).
 
 ```bash
-# (4) (use offline machine) get a signature for your intent to CREATE program
-solana program deploy --sign-only --fee-payer <ONLINE_SIGNER_PUB_KEY> --program <PROGRAM_SIGNER_PUB_KEY> --upgrade-authority <OFFLINE_SIGNER> --buffer <BUFFER_PUB_KEY> --blockhash <VALUE> --max-len <VALUE> --min-rent-balance <VALUE>
-# or (4) (use offline machine) get a signature for your intent to UPGRADE program
-solana program deploy --sign-only --upgrade --fee-payer <ONLINE_SIGNER_PUB_KEY> --program <PROGRAM_SIGNER_PUB_KEY> --upgrade-authority <OFFLINE_SIGNER> --buffer <BUFFER_PUB_KEY> --blockhash <VALUE>
+# or (4) (use offline machine) get a signature for your intent to upgrade program
+solana program upgrade --sign-only --fee-payer <ONLINE_SIGNER_PUB_KEY> --program_id <PROGRAM_SIGNER_PUB_KEY> --upgrade-authority <OFFLINE_SIGNER> --buffer <BUFFER_PUB_KEY> --blockhash <VALUE>
 
-# (5) (use online machine) use this signature to build and broadcast CREATE transactions on-chain
-solana program deploy --fee-payer <ONLINE_SIGNER> --program <PROGRAM_SIGNER> --upgrade-authority <OFFLINE_SIGNER_PUB_KEY> --buffer <BUFFER_PUB_KEY> --blockhash <VALUE> --max-len <VALUE> --signer <OFFLINE_SIGNER_SIGNATURE>
-# or (5) (use online machine) use this signature to build and broadcast UPGRADE transactions on-chain
-solana program deploy --fee-payer <ONLINE_SIGNER> --program <PROGRAM_SIGNER> --upgrade-authority <OFFLINE_SIGNER_PUB_KEY> --buffer <BUFFER_PUB_KEY> --blockhash <VALUE> --signer <OFFLINE_SIGNER_SIGNATURE>
+# or (5) (use online machine) use this signature to build and broadcast upgrade transactions on-chain
+solana program upgrade --fee-payer <ONLINE_SIGNER> --program_id <PROGRAM_SIGNER_PUB_KEY> --upgrade-authority <OFFLINE_SIGNER_PUB_KEY> --buffer <BUFFER_PUB_KEY> --blockhash <VALUE> --signer <OFFLINE_SIGNER_SIGNATURE>
 ```
 Note:
 - typically, the output of the previous command(s) will contain some values useful in subsequent commands, e.g. 
-  `--buffer`, `--max-len`, `--min-rent-balance` (and you need to specify proper values for those in `--sign-only` mode
-  because on offline machine there is no way to query values online)
+  `--buffer`, (and you need to specify proper values for some params in `--sign-only` mode because on offline machine 
+  there is no way to query values online)
 - you should pre-fill every value except for `blockhash` ahead of time, and once you are ready to act - you'll need to 
   look up fresh `blockhash` and paste it in quickly + do your signing, you have ~60 seconds before `blockhash` expires. 
   If you didn't make it in time - just get another fresh hash and repeat until you succeed, or consider using 
