@@ -2097,17 +2097,7 @@ impl VerboseDisplay for CliProgramBuffer {}
 
 impl fmt::Display for CliProgramBuffer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln_name_value(f, "Buffer:", &self.buffer)?;
-        writeln_name_value(
-            f,
-            "Program data max length:",
-            &format!("{:?}", self.program_data_max_len),
-        )?;
-        writeln_name_value(
-            f,
-            "Min rent-exempt program balance:",
-            &format!("{:?}", self.min_rent_exempt_program_balance),
-        )
+        writeln_name_value(f, "Buffer:", &self.buffer)
     }
 }
 

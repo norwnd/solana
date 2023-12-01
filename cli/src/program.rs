@@ -605,7 +605,9 @@ pub fn parse_program_subcommand(
                 bulk_signers.push(buffer_signer);
                 Some(buffer_pubkey)
             } else {
-                return Err("`--buffer` must be specified when doing program upgrade".into());
+                return Err(CliError::BadParameter(
+                    "`--buffer` must be specified when doing program upgrade".into(),
+                ));
             };
 
             let (upgrade_authority, upgrade_authority_pubkey) =
@@ -618,7 +620,9 @@ pub fn parse_program_subcommand(
                 bulk_signers.push(program_signer);
                 Some(program_pubkey)
             } else {
-                return Err("`--program_id` must be specified when doing program upgrade".into());
+                return Err(CliError::BadParameter(
+                    "`--program_id` must be specified when doing program upgrade".into(),
+                ));
             };
 
             let signer_info =
@@ -1258,6 +1262,7 @@ fn process_program_deploy(
 }
 
 /// Upgrade existing program using upgradeable loader
+#[allow(clippy::too_many_arguments)]
 fn process_program_upgrade(
     rpc_client: Arc<RpcClient>,
     config: &CliConfig,
@@ -1368,7 +1373,7 @@ fn process_program_upgrade(
                 &fee_payer_signer.pubkey(),
                 min_rent_exempt_program_data_balance,
                 &None,
-                &vec![],
+                &[],
                 &final_message,
             )?;
         }
@@ -1377,7 +1382,7 @@ fn process_program_upgrade(
             blockhash_query,
             config,
             &None,
-            &vec![],
+            &[],
             &final_message,
             fee_payer_signer,
             None,
@@ -2729,7 +2734,6 @@ mod tests {
         },
         serde_json::Value,
         solana_cli_output::OutputFormat,
-        solana_rpc_client_nonce_utils::blockhash_query,
         solana_sdk::signature::{write_keypair_file, NullSigner},
     };
 
