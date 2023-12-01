@@ -209,7 +209,7 @@ solana program show --buffers --all
 
 ### Set a program's upgrade authority
 
-The program's upgrade authority must to be present to deploy a program. If no
+The program's upgrade authority must be present to deploy a program. If no
 authority is specified during program deployment, the default keypair is used as
 the authority. This is why redeploying a program in the steps above didn't
 require an authority to be explicitly specified.
@@ -231,6 +231,12 @@ Or after deployment and specifying the current authority:
 ```bash
 solana program set-upgrade-authority <PROGRAM_ADDRESS> --upgrade-authority <UPGRADE_AUTHORITY_SIGNER> --new-upgrade-authority <NEW_UPGRADE_AUTHORITY>
 ```
+
+In case you want to set "new upgrade authority" to a signer that you only have pubkey of (when you don't have access
+to its private key) - which is useful for things like [upgrading program using offline signer as authority](deploy-a-program.md#upgrading-program-using-offline-signer-as-authority)
+- you need to use `--skip-new-upgrade-authority-signer-check` option to inform `solana program set-upgrade-authority`
+of your intentions (because otherwise it assumes you have access to that singer's private key and checks for that,
+to ensure you don't accidentally supply "new upgrade authority" you don't have control over).
 
 ### Immutable programs
 
@@ -312,16 +318,12 @@ security** (compared to typical upgrade flow described in [this section](deploy-
 which assumes the usage of machine connected to internet - aka online signer). Note, currently only `upgrade`
 operation can be performed in "offline" mode, initial program `deploy` **must** be performed using online machine
 and only subsequent program upgrades can leverage offline signing. For a first time deploy it is **recommended** 
-to [change program's upgrade authority](deploy-a-program.md#set-a-programs-upgrade-authority) to offline signer,
-so that future program upgrades will only be possible via signature by private key residing on offline machine
-(see how it's done below).
+to [change program's upgrade authority using `--skip-new-upgrade-authority-signer-check` option](deploy-a-program.md#set-a-programs-upgrade-authority)
+to offline signer, so that future program upgrades will only be possible via signature by private key residing on 
+offline machine (see how it's done below).
 
 Assume that program has been deployed (using online machine) and it's upgrade authority has been changed to
-offline signer - authority's private key generated and stays on machine **disconnected** from internet (note, 
-use `--skip-new-upgrade-authority-signer-check` when upgrading authority to offline signer because you'll be 
-upgrading using online machine that doesn't have access to "new upgrade authority signer private key" since 
-it's offline, it's checked to be present for extra safety - ensuring that you don't accidentally specify 
-"new authority" that you don't have control over). 
+offline signer - authority's private key generated and stays on machine **disconnected** from internet. 
 A typical setup would consist of 3 different pairs of keys:
 - online signer (used as fee payer for deploying program buffer, deploying/upgrading program itself)
 - offline signer (serves as authority over program upgrades, protects program upgrades from certain 
