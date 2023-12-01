@@ -236,7 +236,11 @@ In case you want to set "new upgrade authority" to a signer that you only have p
 to its private key) - which is useful for things like [upgrading program using offline signer as authority](deploy-a-program.md#upgrading-program-using-offline-signer-as-authority)
 - you need to use `--skip-new-upgrade-authority-signer-check` option to inform `solana program set-upgrade-authority`
 of your intentions (because otherwise it assumes you have access to that singer's private key and checks for that,
-to ensure you don't accidentally supply "new upgrade authority" you don't have control over).
+to ensure you don't accidentally supply "new upgrade authority" you don't have control over):
+
+```bash
+solana program set-upgrade-authority <PROGRAM_ADDRESS> --new-upgrade-authority <NEW_UPGRADE_AUTHORITY> --skip-new-upgrade-authority-signer-check
+```
 
 ### Immutable programs
 
