@@ -13,8 +13,8 @@ To deploy a program, use the Solana tools to interact with the on-chain loader
 to:
 
 - Initialize a program account
-- Upload the program's shared object (the program binary `.so`) to the program account's data buffer
-- (optional) Verify the uploaded program
+- Upload the program's shared object to the program account's data buffer
+- Verify the uploaded program
 - Finalize the program by marking the program account executable.
 
 Once deployed, anyone can execute the program by sending transactions that
@@ -25,7 +25,7 @@ reference it to the cluster.
 ### Deploy a program
 
 To deploy a program, you will need the location of the program's shared object
-(the program binary `.so`):
+(the program binary .so)
 
 ```bash
 solana program deploy <PROGRAM_FILEPATH>
@@ -48,9 +48,9 @@ If the program id is not specified on the command line the tools will first look
 for a keypair file matching the `<PROGRAM_FILEPATH>`, or internally generate a
 new keypair.
 
-You can typically find a matching program keypair file is in the same directory 
-as the program's shared object, and named <PROGRAM_NAME>-keypair.json. Matching 
-program keypairs are generated automatically by the program build tools:
+A matching program keypair file is in the same directory as the program's shared
+object, and named <PROGRAM_NAME>-keypair.json. Matching program keypairs are
+generated automatically by the program build tools:
 
 ```bash
 ./path-to-program/program.so
@@ -89,10 +89,10 @@ Data Length: 5216 (0x1460) bytes
 ### Redeploy a program
 
 A program can be redeployed to the same address to facilitate rapid development,
-bug fixes, or upgrades.
+bug fixes, or upgrades. Matching keypair files are generated once so that
+redeployments will be to the same program address.
 
-The command looks the same as the deployment command (same keypair file that resides from file directory corresponding
-to <PROGRAM_FILEPATH>, this keypair file will be generated once and then reused):
+The command looks the same as the deployment command:
 
 ```bash
 solana program deploy <PROGRAM_FILEPATH>
@@ -111,8 +111,8 @@ solana program deploy --max-len 200000 <PROGRAM_FILEPATH>
 
 Note that program accounts are required to be
 [rent-exempt](developing/programming-model/accounts.md#rent-exemption), and the
-`max-len` **cannot be changed** after initial deployment, yet any SOL in the program accounts
-is locked up permanently and cannot be reclaimed.
+`max-len` is fixed after initial deployment, so any SOL in the program accounts
+is locked up permanently.
 
 ### Resuming a failed deploy
 
@@ -157,7 +157,7 @@ solana program deploy --buffer <KEYPAIR_PATH> <PROGRAM_FILEPATH>
 Both program and buffer accounts can be closed and their lamport balances
 transferred to a recipient's account.
 
-If deployment fails there will be a left-over buffer account that holds
+If deployment fails there will be a left over buffer account that holds
 lamports. The buffer account can either be used to [resume a
 deploy](#resuming-a-failed-deploy) or closed.
 
@@ -209,7 +209,7 @@ solana program show --buffers --all
 
 ### Set a program's upgrade authority
 
-The program's upgrade authority must be present to deploy a program. If no
+The program's upgrade authority must to be present to deploy a program. If no
 authority is specified during program deployment, the default keypair is used as
 the authority. This is why redeploying a program in the steps above didn't
 require an authority to be explicitly specified.
@@ -230,16 +230,6 @@ Or after deployment and specifying the current authority:
 
 ```bash
 solana program set-upgrade-authority <PROGRAM_ADDRESS> --upgrade-authority <UPGRADE_AUTHORITY_SIGNER> --new-upgrade-authority <NEW_UPGRADE_AUTHORITY>
-```
-
-In case you want to set "new upgrade authority" to a signer that you only have a pubkey of (meaning, you don't have access
-to its private key) - which is useful for things like [upgrading program using offline signer as authority](deploy-a-program.md#upgrading-program-using-offline-signer-as-authority) -
-you need to use `--skip-new-upgrade-authority-signer-check` option to inform `solana program set-upgrade-authority`
-command of your intentions (because otherwise it assumes you have access to that singer's private key and checks for 
-that, to ensure you don't accidentally supply "new upgrade authority" you don't have control over):
-
-```bash
-solana program set-upgrade-authority <PROGRAM_ADDRESS> --new-upgrade-authority <NEW_UPGRADE_AUTHORITY> --skip-new-upgrade-authority-signer-check
 ```
 
 ### Immutable programs
@@ -266,12 +256,12 @@ solana program dump <ACCOUNT_ADDRESS> <OUTPUT_FILEPATH>
 ```
 
 The dumped file will be in the same as what was deployed, so in the case of a
-shared object (the program binary `.so`), the dumped file will be a fully functional shared object. Note
+shared object, the dumped file will be a fully functional shared object. Note
 that the `dump` command dumps the entire data space, which means the output file
-might have trailing zeros after the shared object's data up to `max_len`.
+will have trailing zeros after the shared object's data up to `max_len`.
 Sometimes it is useful to dump and compare a program to ensure it matches a
-known program binary. The dumped file can be zero-truncated, hashed,
-and compared to the hash of the original program file.
+known program binary. The original program file can be zero-extended, hashed,
+and compared to the hash of the dumped file.
 
 ```bash
 $ solana dump <ACCOUNT_ADDRESS> dump.so
@@ -285,14 +275,13 @@ $ sha256sum extended.so dump.so
 Instead of deploying directly to the program account, the program can be written
 to an intermediary buffer account. Intermediary accounts can be useful for things
 like multi-entity governed programs where the governing members fist verify the
-intermediary buffer contents and then vote to allow an upgrade using it, or for
-[deploying programs with offline signer authority](#deploying-program-with-offline-signer-authority).
+intermediary buffer contents and then vote to allow an upgrade using it.
 
 ```bash
 solana program write-buffer <PROGRAM_FILEPATH>
 ```
 
-Buffer accounts support different authorities (including offline signer and program account signer):
+Buffer accounts support authorities like program accounts:
 
 ```bash
 solana program set-buffer-authority <BUFFER_ADDRESS> --new-buffer-authority <NEW_BUFFER_AUTHORITY>
@@ -308,45 +297,37 @@ the program:
 solana program deploy --program-id <PROGRAM_ADDRESS> --buffer <BUFFER_ADDRESS>
 ```
 
-Note, the buffer's authority must match the program's upgrade authority. Also, upon successful deploy
-buffer accounts contents are copied into program accounts and are erased from blockchain.
+Note, the buffer's authority must match the program's upgrade authority.
 
 Buffers also support `show` and `dump` just like programs do.
 
 ### Upgrading program using offline signer as authority
 
-Storing private key(s) on machine without internet access (offline signer) is much safer compared to
-storing them on machine with internet access (online signer), this section describes how program developer
-can use offline machine (offline signer) to sign-off on his program `upgrade` to get a **higher degree of
-security** (compared to typical upgrade flow described in [this section](deploy-a-program.md#redeploy-a-program)
-which assumes the usage of machine connected to internet - aka online signer). Note, currently only `upgrade`
-operation can be performed in "offline" mode, initial program `deploy` **must** be performed using online machine
-and only subsequent program upgrades can leverage offline signing. For a first time deploy it is **recommended** 
-to [change program's upgrade authority (using `--skip-new-upgrade-authority-signer-check` option)](deploy-a-program.md#set-a-programs-upgrade-authority)
-to offline signer, so that future program upgrades will only be possible with a signature of private key residing on 
-offline machine.
+Some security models require separating the signing process from the transaction broadcast, such that the signing keys can be completely disconnected from any network, also known as [offline signing](../offline-signing.md).
 
-Assuming your program has been deployed (using online machine) and its upgrade authority has been changed to
-offline signer (a signer whose private key is generated and stays on machine **disconnected** from internet), 
+This section describes how a program developer can use offline signing to upgrade their program, unlike the [previous section](deploy-a-program.md#redeploy-a-program), which assumes the machine is connected to the internet, aka online signing.
+
+Note that only the `upgrade` command can be performed in offline mode. The initial program deployment **must** be performed from an online machine, and only subsequent program upgrades can leverage offline signing.
+
+Assuming your program has been deployed and its upgrade authority has been changed to an
+offline signer, 
 a typical setup would consist of 3 different signers (pairs of keys):
-- online signer (used as fee payer for deploying program buffer, deploying/upgrading program itself)
-- offline signer (serves as authority over program upgrades, protects program upgrades from certain 
-  types of attacks), make sure to have a **secure** backup of this signer
-- program signer (typically, generated when program has been compiled into `.so` file)
+- online signer (fee payer for uploading program buffer and upgrading program)
+- offline signer (program upgrade authority)
 
 The general process is as follows:
-1) (use online machine) create buffer
-2) (use online machine) upgrade buffer authority to offline signer
-3) (optional, use a separate online machine) verify the actual buffer on-chain contents
-4) (use offline machine) build and copy a signature for your intent to upgrade program
-5) (use online machine) use this signature to build and broadcast upgrade transactions on-chain
+1. (online) create buffer and write new program to it
+2. (online) upgrade buffer authority to offline signer
+3. (optional, online) verify the actual buffer on-chain contents
+4. (offline) sign a transaction to upgrade the program
+5. (online) use this signature to broadcast upgrade transaction
 
 ```bash
 # (1) (use online machine) create buffer
 solana program write-buffer <PROGRAM_FILEPATH>
 
 # (2) (use online machine) upgrade buffer authority to offline signer
-solana program set-buffer-authority <ONLINE_SIGNER_PUB_KEY> --new-buffer-authority <OFFLINE_SIGNER_PUB_KEY>
+solana program set-buffer-authority <BUFFER_PUBKEY> --new-buffer-authority <OFFLINE_SIGNER_PUBKEY>
 ```
 
 - note, above we have to issue a separate `solana program set-buffer-authority` command (using online machine) to 
@@ -354,21 +335,15 @@ solana program set-buffer-authority <ONLINE_SIGNER_PUB_KEY> --new-buffer-authori
   up as buffer authority when running `solana program write-buffer` command using online machine (offline signer 
   private key is stored on offline machine), and `solana program set-buffer-authority` doesn't impose that requirement.
 
-(3) This is where you'd want to verify that program uploaded to your buffer indeed matches source code.
-The most secure way to do it would be to compile program source code on a different online machine (not the same
-online machine that deploys your program, because it could be compromised) and compare resulting `.so` file with
-program data residing on-chain. See how you can [dump on-chain program into a file](deploy-a-program.md#dumping-a-program-to-a-file)
-to verify it.
-
-After program buffer has been verified and is believed to contain the compiled result of intended source code - we are 
-ready to sign program deploy (to upgrade existing program), fill in all required parameters below (<WHATEVER_VALUE> values).
+(3) (optional) You may verify that the uploaded program matches the built binary. See 
+[dumping a program to a file](deploy-a-program.md#dumping-a-program-to-a-file) for more information and details.
 
 ```bash
 # or (4) (use offline machine) get a signature for your intent to upgrade program
-solana program upgrade --sign-only --fee-payer <ONLINE_SIGNER_PUB_KEY> --program-id <PROGRAM_SIGNER_PUB_KEY> --upgrade-authority <OFFLINE_SIGNER> --buffer <BUFFER_PUB_KEY> --blockhash <VALUE>
+solana program upgrade --sign-only --fee-payer <ONLINE_SIGNER_PUBKEY> --program-id <PROGRAM_ID> --upgrade-authority <OFFLINE_SIGNER> --buffer <BUFFER_PUBKEY> --blockhash <VALUE>
 
 # or (5) (use online machine) use this signature to build and broadcast upgrade transactions on-chain
-solana program upgrade --fee-payer <ONLINE_SIGNER> --program-id <PROGRAM_SIGNER_PUB_KEY> --upgrade-authority <OFFLINE_SIGNER_PUB_KEY> --buffer <BUFFER_PUB_KEY> --blockhash <VALUE> --signer <OFFLINE_SIGNER_SIGNATURE>
+solana program upgrade --fee-payer <ONLINE_SIGNER> --program-id <PROGRAM_ID> --upgrade-authority <OFFLINE_SIGNER_PUBKEY> --buffer <BUFFER_PUBKEY> --blockhash <VALUE> --signer <OFFLINE_SIGNER_PUBKEY>:<OFFLINE_SIGNER_SIGNATURE>
 ```
 Note:
 - typically, the output of the previous command(s) will contain some values useful in subsequent commands, e.g. 
