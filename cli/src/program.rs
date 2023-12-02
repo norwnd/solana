@@ -622,7 +622,7 @@ pub fn parse_program_subcommand(
             let mut bulk_signers = vec![];
 
             let fee_payer_pubkey = if let Ok((Some(fee_payer_signer), Some(fee_payer_pubkey))) =
-                signer_of(matches, FEE_PAYER_ARG.name, wallet_manager)
+                signer_of_or_null_signer(matches, FEE_PAYER_ARG.name, wallet_manager)
             {
                 bulk_signers.push(Some(fee_payer_signer));
                 fee_payer_pubkey
@@ -633,29 +633,35 @@ pub fn parse_program_subcommand(
                 fee_payer_pubkey
             };
 
-            let buffer_pubkey = if let Ok((buffer_signer, Some(buffer_pubkey))) =
-                signer_of_or_null_signer(matches, "buffer", wallet_manager)
+            let buffer_pubkey = if let Ok(Some(buffer_pubkey)) =
+                pubkey_of_signer(matches, "buffer", wallet_manager)
             {
-                bulk_signers.push(buffer_signer);
                 Some(buffer_pubkey)
             } else {
                 return Err(CliError::BadParameter(
-                    "`--buffer` must be specified when doing program upgrade".into(),
+                    "`BUFFER_PUBKEY` must be specified when doing program upgrade".into(),
                 ));
             };
 
-            let (upgrade_authority, upgrade_authority_pubkey) =
-                signer_of_or_null_signer(matches, "upgrade_authority", wallet_manager)?;
-            bulk_signers.push(upgrade_authority);
+            let upgrade_authority_pubkey =
+                if let Ok((upgrade_authority, Some(upgrade_authority_pubkey))) =
+                    signer_of_or_null_signer(matches, "buffer", wallet_manager)
+                {
+                    bulk_signers.push(upgrade_authority);
+                    Some(upgrade_authority_pubkey)
+                } else {
+                    return Err(CliError::BadParameter(
+                        "`--upgrade-authority` must be specified when doing program upgrade".into(),
+                    ));
+                };
 
-            let program_pubkey = if let Ok((program_signer, Some(program_pubkey))) =
-                signer_of_or_null_signer(matches, "program_id", wallet_manager)
+            let program_pubkey = if let Ok(Some(program_pubkey)) =
+                pubkey_of_signer(matches, "program_id", wallet_manager)
             {
-                bulk_signers.push(program_signer);
                 Some(program_pubkey)
             } else {
                 return Err(CliError::BadParameter(
-                    "`--program_id` must be specified when doing program upgrade".into(),
+                    "`PROGRAM_ID` must be specified when doing program upgrade".into(),
                 ));
             };
 
