@@ -340,10 +340,10 @@ solana program set-buffer-authority <BUFFER_PUBKEY> --new-buffer-authority <OFFL
 
 ```bash
 # or (4) (use offline machine) get a signature for your intent to upgrade program
-solana program upgrade --sign-only --fee-payer <ONLINE_SIGNER_PUBKEY> --program-id <PROGRAM_ID> --upgrade-authority <OFFLINE_SIGNER> --buffer <BUFFER_PUBKEY> --blockhash <VALUE>
+solana program upgrade <BUFFER_PUBKEY> <PROGRAM_ID> --sign-only --fee-payer <ONLINE_SIGNER_PUBKEY> --upgrade-authority <OFFLINE_SIGNER> --blockhash <VALUE>
 
 # or (5) (use online machine) use this signature to build and broadcast upgrade transactions on-chain
-solana program upgrade --fee-payer <ONLINE_SIGNER> --program-id <PROGRAM_ID> --upgrade-authority <OFFLINE_SIGNER_PUBKEY> --buffer <BUFFER_PUBKEY> --blockhash <VALUE> --signer <OFFLINE_SIGNER_PUBKEY>:<OFFLINE_SIGNER_SIGNATURE>
+solana program upgrade <BUFFER_PUBKEY> <PROGRAM_ID> --fee-payer <ONLINE_SIGNER> --upgrade-authority <OFFLINE_SIGNER_PUBKEY> --blockhash <VALUE> --signer <OFFLINE_SIGNER_PUBKEY>:<OFFLINE_SIGNER_SIGNATURE>
 ```
 Note:
 - typically, the output of the previous command(s) will contain some values useful in subsequent commands, e.g. 

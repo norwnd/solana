@@ -1467,8 +1467,6 @@ fn test_cli_program_deploy_with_offline_signing() {
         program_signer_index: 2,
         buffer_signer_index: 2, // will ensure offline signature applies to wrong(different) message
         upgrade_authority_signer_index: 0,
-        is_final: false,
-        skip_fee_check: false,
         sign_only: true,
         blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
     });
@@ -1491,8 +1489,6 @@ fn test_cli_program_deploy_with_offline_signing() {
         program_signer_index: 2,
         buffer_signer_index: 1,
         upgrade_authority_signer_index: 0,
-        is_final: false,
-        skip_fee_check: false,
         sign_only: false,
         blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
     });
@@ -1516,8 +1512,6 @@ fn test_cli_program_deploy_with_offline_signing() {
         program_signer_index: 2,
         buffer_signer_index: 1,
         upgrade_authority_signer_index: 0,
-        is_final: false,
-        skip_fee_check: false,
         sign_only: true,
         blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
     });
@@ -1540,8 +1534,6 @@ fn test_cli_program_deploy_with_offline_signing() {
         program_signer_index: 2,
         buffer_signer_index: 1,
         upgrade_authority_signer_index: 0,
-        is_final: false,
-        skip_fee_check: false,
         sign_only: false,
         blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
     });

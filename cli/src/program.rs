@@ -94,8 +94,6 @@ pub enum ProgramCliCommand {
         program_signer_index: SignerIndex,
         buffer_signer_index: SignerIndex,
         upgrade_authority_signer_index: SignerIndex,
-        is_final: bool,
-        skip_fee_check: bool,
         sign_only: bool,
         blockhash_query: BlockhashQuery,
     },
@@ -236,11 +234,12 @@ impl ProgramSubCommands for App<'_, '_> {
                         .about("Upgrade an upgradeable program")
                         .arg(
                             Arg::with_name("buffer")
-                                .long("buffer")
-                                .value_name("BUFFER_SIGNER")
+                                .index(1)
+                                .required(true)
+                                .value_name("BUFFER_PUBKEY")
                                 .takes_value(true)
-                                .validator(is_valid_signer)
-                                .help("Intermediate buffer account with new program data written there")
+                                .validator(is_valid_pubkey)
+                                .help("Intermediate buffer account with new program data"),
                         )
                         .arg(
                             Arg::with_name("upgrade_authority")
@@ -248,19 +247,17 @@ impl ProgramSubCommands for App<'_, '_> {
                                 .value_name("UPGRADE_AUTHORITY_SIGNER")
                                 .takes_value(true)
                                 .validator(is_valid_signer)
-                                .help("Upgrade authority [default: the default configured keypair]")
+                                .help(
+                                    "Upgrade authority [default: the default configured keypair]",
+                                ),
                         )
                         .arg(pubkey!(
                             Arg::with_name("program_id")
-                                .long("program-id")
+                                .index(2)
+                                .required(true)
                                 .value_name("PROGRAM_ID"),
-                                "Executable program's address (pubkey)"
+                            "Executable program's address (pubkey)"
                         ))
-                        .arg(
-                            Arg::with_name("final")
-                                .long("final")
-                                .help("The program will not be upgradeable")
-                        )
                         .arg(fee_payer_arg())
                         .offline_args(),
                 )
@@ -648,7 +645,7 @@ pub fn parse_program_subcommand(
             };
 
             let (upgrade_authority, upgrade_authority_pubkey) =
-                signer_of(matches, "upgrade_authority", wallet_manager)?;
+                signer_of_or_null_signer(matches, "upgrade_authority", wallet_manager)?;
             bulk_signers.push(upgrade_authority);
 
             let program_pubkey = if let Ok((program_signer, Some(program_pubkey))) =
@@ -673,8 +670,6 @@ pub fn parse_program_subcommand(
                     upgrade_authority_signer_index: signer_info
                         .index_of(upgrade_authority_pubkey)
                         .unwrap(),
-                    is_final: matches.is_present("final"),
-                    skip_fee_check,
                     sign_only,
                     blockhash_query,
                 }),
@@ -933,8 +928,6 @@ pub fn process_program_subcommand(
             program_signer_index,
             buffer_signer_index,
             upgrade_authority_signer_index,
-            is_final,
-            skip_fee_check,
             sign_only,
             blockhash_query,
         } => process_program_upgrade(
@@ -944,8 +937,6 @@ pub fn process_program_subcommand(
             *program_signer_index,
             *buffer_signer_index,
             *upgrade_authority_signer_index,
-            *is_final,
-            *skip_fee_check,
             *sign_only,
             blockhash_query,
         ),
@@ -1067,9 +1058,7 @@ fn get_default_program_keypair(program_location: &Option<String>) -> Keypair {
     program_keypair
 }
 
-/// Deploy program using upgradeable loader. It also can process program upgrades for
-/// backward-compatibility purposes, but otherwise - process_program_upgrade should
-/// be used for program upgrades instead.
+/// Deploy program using upgradeable loader. It also can process program upgrades
 #[allow(clippy::too_many_arguments)]
 fn process_program_deploy(
     rpc_client: Arc<RpcClient>,
@@ -1306,8 +1295,6 @@ fn process_program_upgrade(
     program_signer_index: SignerIndex,
     buffer_signer_index: SignerIndex,
     upgrade_authority_signer_index: SignerIndex,
-    is_final: bool,
-    skip_fee_check: bool,
     sign_only: bool,
     blockhash_query: &BlockhashQuery,
 ) -> ProcessResult {
@@ -1317,7 +1304,7 @@ fn process_program_upgrade(
     let program_pubkey = config.signers[program_signer_index].pubkey();
 
     let blockhash = blockhash_query.get_blockhash(&rpc_client, config.commitment)?;
-    let final_message = Message::new_with_blockhash(
+    let message = Message::new_with_blockhash(
         &[bpf_loader_upgradeable::upgrade(
             &program_pubkey,
             &buffer_pubkey,
@@ -1329,7 +1316,7 @@ fn process_program_upgrade(
     );
 
     if sign_only {
-        let mut tx = Transaction::new_unsigned(final_message);
+        let mut tx = Transaction::new_unsigned(message);
         let signers = &[fee_payer_signer, upgrade_authority_signer];
         // Using try_partial_sign here because fee_payer_signer might not be the fee payer we
         // end up using for this transaction (it might be NullSigner).
@@ -1342,101 +1329,20 @@ fn process_program_upgrade(
             },
         )
     } else {
-        let final_message = Some(final_message);
-
-        let buffer_len = {
-            // Check supplied buffer account.
-            if let Some(account) = rpc_client
-                .get_account_with_commitment(&buffer_pubkey, config.commitment)?
-                .value
-            {
-                if !bpf_loader_upgradeable::check_id(&account.owner) {
-                    return Err(format!(
-                        "Buffer account {buffer_pubkey} is not owned by the BPF Upgradeable Loader",
-                    )
-                    .into());
-                }
-
-                match account.state() {
-                    Ok(UpgradeableLoaderState::Buffer { .. }) => {
-                        // continue if buffer is initialized
-                    }
-                    Ok(UpgradeableLoaderState::Program { .. }) => {
-                        return Err(format!(
-                            "Cannot use program account {buffer_pubkey} as buffer"
-                        )
-                        .into());
-                    }
-                    Ok(UpgradeableLoaderState::ProgramData { .. }) => {
-                        return Err(format!(
-                            "Cannot use program data account {buffer_pubkey} as buffer",
-                        )
-                        .into())
-                    }
-                    Ok(UpgradeableLoaderState::Uninitialized) => {
-                        return Err(
-                            format!("Buffer account {buffer_pubkey} is not initialized").into()
-                        );
-                    }
-                    Err(_) => {
-                        return Err(format!(
-                            "Buffer account {buffer_pubkey} could not be deserialized"
-                        )
-                        .into())
-                    }
-                };
-
-                account
-                    .data
-                    .len()
-                    .saturating_sub(UpgradeableLoaderState::size_of_buffer_metadata())
-            } else {
-                return Err(format!(
-                    "Buffer account {buffer_pubkey} not found, was it already consumed?",
-                )
-                .into());
-            }
-        };
-
-        let min_rent_exempt_program_data_balance = rpc_client
-            .get_minimum_balance_for_rent_exemption(UpgradeableLoaderState::size_of_programdata(
-                buffer_len,
-            ))?;
-        if !skip_fee_check {
-            check_payer(
-                &rpc_client,
-                config,
-                &fee_payer_signer.pubkey(),
-                min_rent_exempt_program_data_balance,
-                &None,
-                &[],
-                &final_message,
-            )?;
-        }
-        send_deploy_messages(
-            rpc_client.clone(),
-            blockhash_query,
-            config,
-            &None,
-            &[],
-            &final_message,
-            fee_payer_signer,
-            None,
-            None,
-            Some(&[upgrade_authority_signer]),
+        let fee = rpc_client.get_fee_for_message(&message)?;
+        check_account_for_spend_and_fee_with_commitment(
+            &rpc_client,
+            &fee_payer_signer.pubkey(),
+            0,
+            fee,
+            config.commitment,
         )?;
-        if is_final {
-            process_set_authority(
-                &rpc_client,
-                config,
-                Some(program_pubkey),
-                None,
-                Some(upgrade_authority_signer_index),
-                None,
-            )?;
-        }
+        let mut tx = Transaction::new_unsigned(message);
+        let signers = &[fee_payer_signer, upgrade_authority_signer];
+        tx.try_sign(signers, blockhash)?;
+        let result = rpc_client.send_and_confirm_transaction_with_spinner(&tx)?;
         let program_id = CliProgramId {
-            program_id: program_pubkey.to_string(),
+            program_id: result.to_string(),
         };
         Ok(config.output_format.formatted_string(&program_id))
     }
