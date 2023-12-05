@@ -1499,11 +1499,12 @@ mod tests {
             &buffer_signer_identity,
             &program_signer_identity,
         ];
-        let mut fee_payer_signer_index = 0; // offline signer
-        if !use_offline_signer_as_fee_payer {
-            fee_payer_signer_index = 3; // online signer
+        let fee_payer_signer_index = if use_offline_signer_as_fee_payer {
+            0 // offline signer
+        } else {
             config.signers.push(&online_signer_identity); // can't (and won't) provide signature, for simplicity
-        }
+            3 // online signer
+        };
         config.command = CliCommand::Program(ProgramCliCommand::Upgrade {
             fee_payer_signer_index,
             program_signer_index: 2,
@@ -1522,11 +1523,12 @@ mod tests {
             &buffer_signer_identity,
             &program_signer,
         ];
-        let mut fee_payer_signer_index = 0; // offline signer
-        if !use_offline_signer_as_fee_payer {
-            fee_payer_signer_index = 3; // online signer
-            config.signers.push(&online_signer); // can (and will) provide signature
-        }
+        let fee_payer_signer_index = if use_offline_signer_as_fee_payer {
+            0 // offline signer
+        } else {
+            config.signers.push(&online_signer_identity); // can't (and won't) provide signature, for simplicity
+            3 // online signer
+        };
         config.command = CliCommand::Program(ProgramCliCommand::Upgrade {
             fee_payer_signer_index,
             program_signer_index: 2,
@@ -1545,11 +1547,12 @@ mod tests {
             &buffer_signer_identity,
             &program_signer_identity,
         ];
-        let mut fee_payer_signer_index = 0; // offline signer
-        if !use_offline_signer_as_fee_payer {
-            fee_payer_signer_index = 3; // online signer
+        let fee_payer_signer_index = if use_offline_signer_as_fee_payer {
+            0 // offline signer
+        } else {
             config.signers.push(&online_signer_identity); // can't (and won't) provide signature, for simplicity
-        }
+            3 // online signer
+        };
         config.command = CliCommand::Program(ProgramCliCommand::Upgrade {
             fee_payer_signer_index,
             program_signer_index: 2,
@@ -1568,11 +1571,12 @@ mod tests {
             &buffer_signer_identity,
             &program_signer,
         ];
-        let mut fee_payer_signer_index = 0; // offline signer
-        if !use_offline_signer_as_fee_payer {
-            fee_payer_signer_index = 3; // online signer
-            config.signers.push(&online_signer); // can (and will) provide signature
-        }
+        let fee_payer_signer_index = if use_offline_signer_as_fee_payer {
+            0 // offline signer
+        } else {
+            config.signers.push(&online_signer_identity); // can't (and won't) provide signature, for simplicity
+            3 // online signer
+        };
         config.command = CliCommand::Program(ProgramCliCommand::Upgrade {
             fee_payer_signer_index,
             program_signer_index: 2,
