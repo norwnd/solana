@@ -8,7 +8,7 @@ mod tests {
             program::{ProgramCliCommand, CLOSE_PROGRAM_WARNING},
             test_utils::wait_n_slots,
         },
-        solana_cli_output::OutputFormat,
+        solana_cli_output::{parse_sign_only_reply_string, OutputFormat},
         solana_faucet::faucet::run_local_faucet,
         solana_rpc_client::rpc_client::RpcClient,
         solana_rpc_client_nonce_utils::blockhash_query::BlockhashQuery,
@@ -17,7 +17,7 @@ mod tests {
             bpf_loader_upgradeable::{self, UpgradeableLoaderState},
             commitment_config::CommitmentConfig,
             pubkey::Pubkey,
-            signature::{Keypair, NullSigner, Presigner, Signature, Signer},
+            signature::{Keypair, NullSigner, Signer},
         },
         solana_streamer::socket::SocketAddrSpace,
         solana_test_validator::TestValidator,
@@ -1491,7 +1491,6 @@ mod tests {
             &online_signer,
             &offline_signer,
             &buffer_signer,
-            &buffer_signer_identity,
         );
 
         // Offline sign-only with signature over "wrong" message (with different buffer)
@@ -1514,8 +1513,9 @@ mod tests {
             blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
         });
         config.output_format = OutputFormat::JsonCompact;
-        let output = process_command(&config).unwrap();
-        let offline_pre_signer = fetch_pre_signer(&output, &offline_signer.pubkey().to_string());
+        let sig_response = process_command(&config).unwrap();
+        let sign_only = parse_sign_only_reply_string(&sig_response);
+        let offline_pre_signer = sign_only.presigner_of(&offline_signer.pubkey()).unwrap();
         // Attempt to deploy from buffer using signature over wrong(different) message (should fail)
         config.signers = vec![
             &offline_pre_signer,
@@ -1559,8 +1559,9 @@ mod tests {
             blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
         });
         config.output_format = OutputFormat::JsonCompact;
-        let output = process_command(&config).unwrap();
-        let offline_pre_signer = fetch_pre_signer(&output, &offline_signer.pubkey().to_string());
+        let sig_response = process_command(&config).unwrap();
+        let sign_only = parse_sign_only_reply_string(&sig_response);
+        let offline_pre_signer = sign_only.presigner_of(&offline_signer.pubkey()).unwrap();
         // Attempt to deploy from buffer using signature over correct message (should succeed)
         config.signers = vec![
             &offline_pre_signer,
@@ -1581,17 +1582,21 @@ mod tests {
             blockhash_query: BlockhashQuery::new(Some(blockhash), true, None),
         });
         config.output_format = OutputFormat::JsonCompact;
-        let min_slot = rpc_client.get_slot().unwrap();
         process_command(&config).unwrap();
-        let max_slot = rpc_client.get_slot().unwrap();
-        verify_deployed_program(
-            &mut config,
-            &online_signer,
-            offline_signer.pubkey(),
-            program_signer.pubkey(),
-            max_program_data_len,
-            min_slot,
-            max_slot,
+        let (programdata_pubkey, _) = Pubkey::find_program_address(
+            &[program_signer.pubkey().as_ref()],
+            &bpf_loader_upgradeable::id(),
+        );
+        let programdata_account = rpc_client.get_account(&programdata_pubkey).unwrap();
+        assert_eq!(
+            programdata_account.lamports,
+            minimum_balance_for_large_buffer
+        );
+        assert_eq!(programdata_account.owner, bpf_loader_upgradeable::id());
+        assert!(!programdata_account.executable);
+        assert_eq!(
+            programdata_account.data[UpgradeableLoaderState::size_of_programdata_metadata()..],
+            large_program_data[..]
         );
     }
 
@@ -1867,28 +1872,6 @@ mod tests {
         }
     }
 
-    fn fetch_pre_signer(cmd_output_json_str: &str, target_pub_key: &str) -> Presigner {
-        let json: Value = serde_json::from_str(cmd_output_json_str).unwrap();
-        let target_pre_signer_str = json
-            .as_object()
-            .unwrap()
-            .get("signers")
-            .unwrap()
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|pre_signer| pre_signer.as_str().unwrap().starts_with(target_pub_key))
-            .unwrap()
-            .as_str()
-            .unwrap();
-        let mut parts = target_pre_signer_str.split('=');
-        assert_eq!(2, parts.clone().count());
-        Presigner::new(
-            &Pubkey::from_str(parts.next().unwrap()).unwrap(),
-            &Signature::from_str(parts.next().unwrap()).unwrap(),
-        )
-    }
-
     fn create_buffer_with_offline_authority<'a>(
         rpc_client: &RpcClient,
         program_path: &Path,
@@ -1896,7 +1879,6 @@ mod tests {
         online_signer: &'a Keypair,
         offline_signer: &'a Keypair,
         buffer_signer: &'a Keypair,
-        buffer_signer_identity: &'a NullSigner,
     ) {
         // Write a buffer
         config.signers = vec![online_signer, buffer_signer];
@@ -1948,82 +1930,5 @@ mod tests {
         } else {
             panic!("not a buffer account");
         }
-    }
-
-    fn verify_deployed_program<'a>(
-        config: &mut CliConfig<'a>,
-        online_signer: &'a Keypair,
-        offline_signer_pub_key: Pubkey,
-        program_signer_pub_key: Pubkey,
-        max_program_data_len: usize,
-        min_slot: u64,
-        max_slot: u64,
-    ) {
-        // Verify show
-        config.signers = vec![online_signer];
-        config.command = CliCommand::Program(ProgramCliCommand::Show {
-            account_pubkey: Some(program_signer_pub_key),
-            authority_pubkey: program_signer_pub_key,
-            get_programs: false,
-            get_buffers: false,
-            all: false,
-            use_lamports_unit: false,
-        });
-        let response = process_command(config);
-        let json: Value = serde_json::from_str(&response.unwrap()).unwrap();
-        let address_str = json
-            .as_object()
-            .unwrap()
-            .get("programId")
-            .unwrap()
-            .as_str()
-            .unwrap();
-        assert_eq!(
-            program_signer_pub_key,
-            Pubkey::from_str(address_str).unwrap()
-        );
-        let programdata_address_str = json
-            .as_object()
-            .unwrap()
-            .get("programdataAddress")
-            .unwrap()
-            .as_str()
-            .unwrap();
-        let (programdata_pubkey, _) = Pubkey::find_program_address(
-            &[program_signer_pub_key.as_ref()],
-            &bpf_loader_upgradeable::id(),
-        );
-        assert_eq!(
-            programdata_pubkey,
-            Pubkey::from_str(programdata_address_str).unwrap()
-        );
-        let authority_str = json
-            .as_object()
-            .unwrap()
-            .get("authority")
-            .unwrap()
-            .as_str()
-            .unwrap();
-        assert_eq!(
-            offline_signer_pub_key,
-            Pubkey::from_str(authority_str).unwrap()
-        );
-        let deployed_slot = json
-            .as_object()
-            .unwrap()
-            .get("lastDeploySlot")
-            .unwrap()
-            .as_u64()
-            .unwrap();
-        assert!(deployed_slot >= min_slot);
-        assert!(deployed_slot <= max_slot);
-        let data_len = json
-            .as_object()
-            .unwrap()
-            .get("dataLen")
-            .unwrap()
-            .as_u64()
-            .unwrap();
-        assert_eq!(max_program_data_len, data_len as usize);
     }
 }
