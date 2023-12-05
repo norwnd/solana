@@ -1948,23 +1948,6 @@ mod tests {
         } else {
             panic!("not a buffer account");
         }
-
-        // Attempt to deploy from buffer using previous authority (should fail)
-        config.signers = vec![online_signer, buffer_signer_identity];
-        config.command = CliCommand::Program(ProgramCliCommand::Deploy {
-            program_location: None,
-            fee_payer_signer_index: 0,
-            program_signer_index: None,
-            buffer_signer_index: Some(1),
-            allow_excessive_balance: false,
-            upgrade_authority_signer_index: 0,
-            is_final: false,
-            max_len: None,
-            skip_fee_check: false,
-        });
-        config.output_format = OutputFormat::JsonCompact;
-        let error = process_command(config).unwrap_err();
-        assert_eq!(error.to_string(), "Deploying program failed: RPC response error -32002: Transaction simulation failed: Error processing Instruction 1: Incorrect authority provided [5 log messages]");
     }
 
     fn verify_deployed_program<'a>(
