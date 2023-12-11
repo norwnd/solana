@@ -53,12 +53,14 @@ solana_rbpf = { workspace = true }
 spl-memo = { workspace = true, features = ["no-entrypoint"] }
 thiserror = { workspace = true }
 tiny-bip39 = { workspace = true }
+rand = { workspace = true }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
 solana-streamer = { workspace = true }
 solana-test-validator = { workspace = true }
 tempfile = { workspace = true }
+test-case = { workspace = true }
 
 [[bin]]
 name = "solana"
